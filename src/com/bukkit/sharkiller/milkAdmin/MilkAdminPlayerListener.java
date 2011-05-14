@@ -3,6 +3,7 @@ package com.bukkit.sharkiller.milkAdmin;
 import java.io.File;
 import java.io.IOException;
 
+import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerListener;
 import org.bukkit.util.config.Configuration;
@@ -13,7 +14,8 @@ import org.bukkit.util.config.Configuration;
 public class MilkAdminPlayerListener extends PlayerListener {
 	//private final milkBukkit plugin;
 	Configuration Settings = new Configuration(new File("milkAdmin/settings.yml"));
-	PropertiesFile banList = new PropertiesFile("milkAdmin/banlist.ini");
+	PropertiesFile banListName = new PropertiesFile("milkAdmin/banlistname.ini");
+	PropertiesFile banListIp = new PropertiesFile("milkAdmin/banlistip.ini");
 	String BannedString = Settings.getString("Strings.Banned", "Banned from this server");
 
 	public MilkAdminPlayerListener(MilkAdmin instance) {
@@ -24,12 +26,20 @@ public class MilkAdminPlayerListener extends PlayerListener {
 	@Override
 	public void onPlayerJoin(PlayerJoinEvent event) {
 		try {
-			banList.load();
+			banListName.load();
+			banListIp.load();
 		} catch (IOException ioe) {}
-		String PlayerBanned = banList.getString(event.getPlayer().getName(), "false");
-		String PlayerBannedIP = banList.getString(event.getPlayer().getAddress().getAddress().getHostAddress(), "false");
-		if(PlayerBannedIP.contentEquals("true") || PlayerBanned.contentEquals("true")){
-			event.getPlayer().kickPlayer(BannedString);
+		
+		Player player = event.getPlayer();
+		String pName = player.getName();
+		String pIp = player.getAddress().getAddress().getHostAddress();
+		
+		if(banListName.keyExists(pName)){
+			String PlayerBanned = banListName.getString(pName, BannedString);
+			player.kickPlayer(PlayerBanned);
+		}else if(banListIp.keyExists(pIp)){
+			String PlayerBannedIP = banListIp.getString(pIp, BannedString);
+			player.kickPlayer(PlayerBannedIP);
 		}
 	}
 }

@@ -1,11 +1,10 @@
 package com.bukkit.sharkiller.milkAdmin;
 
 import java.io.*;
-
-import java.util.HashMap;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.logging.Logger;
 
-import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.Event.Priority;
 import org.bukkit.plugin.PluginDescriptionFile;
@@ -17,7 +16,7 @@ import com.bukkit.sharkiller.milkAdmin.McRKit.RTKInterfaceException;
 import com.bukkit.sharkiller.milkAdmin.McRKit.RTKListener;
 
 public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKListener{
-	private final HashMap<Player, Boolean> debugees = new HashMap<Player, Boolean>();
+	public static String initTime = "";
 	private final MilkAdminPlayerListener playerListener = new MilkAdminPlayerListener(this);
 	RTKInterface api = null;
 	Configuration Settings = new Configuration(new File("milkAdmin/settings.yml"));
@@ -31,10 +30,11 @@ public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKL
 	public void setup() {
 		try{
 			new File("milkAdmin").mkdir();
-			new File("milkAdmin", "banlist.ini").createNewFile();
+			new File("milkAdmin", "banlistname.ini").createNewFile();
+			new File("milkAdmin", "banlistip.ini").createNewFile();
 			new File("milkAdmin", "settings.yml").createNewFile();
 		} catch (IOException ex) {
-			System.out.println("Could not create milkAdmin files.");
+			System.out.println("[milkAdmin] Error: Could not create milkAdmin files.");
 		}
 		eraseLoggedIn();
 		try{
@@ -50,7 +50,7 @@ public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKL
 	}
 
 	public void onRTKStringReceived(String s){
-		System.out.println("From wrapper: "+s);
+		System.out.println("[milkAdmin] From wrapper: "+s);
 	}
 
 	public void eraseLoggedIn(){
@@ -65,10 +65,13 @@ public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKL
 
 	@SuppressWarnings("unused")
 	public void onEnable() {
+		Calendar cal = Calendar.getInstance();
+	    SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+	    initTime = sdf.format(cal.getTime());
 		Logger logger = Logger.getLogger("Minecraft");
 		setup();
 		PluginManager pm = getServer().getPluginManager();
-		pm.registerEvent(Event.Type.PLAYER_JOIN, playerListener, Priority.Normal, this);
+		pm.registerEvent(Event.Type.PLAYER_JOIN, playerListener, Priority.High, this);
 
 		PluginDescriptionFile pdfFile = this.getDescription();
 		System.out.println("[milkAdmin] v"+pdfFile.getVersion()+" is enabled!" );
@@ -80,15 +83,4 @@ public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKL
 		System.out.println("[milkAdmin] Disabled!");
 	}
 
-	public boolean isDebugging(final Player player) {
-		if (debugees.containsKey(player)) {
-			return debugees.get(player);
-		} else {
-			return false;
-		}
-	}
-
-	public void setDebugging(final Player player, final boolean value) {
-		debugees.put(player, value);
-	}
 }

@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.logging.Logger;
 import java.io.*;
+import java.util.regex.*;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -34,12 +35,11 @@ public class WebServer extends Thread implements RTKListener{
 	int consoleLines;
 	String BannedString;
 	String KickedString;
-	String GiveItemString;
-	String TakeAwayString;
 	String levelname;
 	Configuration Settings = new Configuration(new File("milkAdmin/settings.yml"));
 	PropertiesFile BukkitProperties = new PropertiesFile("server.properties");
-	PropertiesFile banList = new PropertiesFile("milkAdmin/banlist.ini");
+	PropertiesFile banListName = new PropertiesFile("milkAdmin/banlistname.ini");
+	PropertiesFile banListIp = new PropertiesFile("milkAdmin/banlistip.ini");
 	String bannedplayers = "banned-players.txt";
 	ArrayList<String> bannedPlayers = new ArrayList<String>();
 	String bannedips = "banned-ips.txt";
@@ -60,6 +60,11 @@ public class WebServer extends Thread implements RTKListener{
 		WebServerSocket = s;
 		start();
 	}
+	
+	public void debug(String text){
+		if(Debug)
+			System.out.println(text);
+	}
 
 	public String readFileAsString(String filePath)
 	throws java.io.IOException{
@@ -77,8 +82,7 @@ public class WebServer extends Thread implements RTKListener{
 			reader.close();
 		}
 		catch (Exception e) {
-			if(Debug)
-				System.out.println("[milkAdmin] ERROR in readFileAsString(): " + e.getMessage());
+			debug("[milkAdmin] ERROR in readFileAsString(): " + e.getMessage());
 		}
 		return fileData.toString();
 	}
@@ -105,13 +109,12 @@ public class WebServer extends Thread implements RTKListener{
             out.close();
 		}
 		catch (Exception e) {
-			if(Debug)
-				System.out.println("[milkAdmin] ERROR in readFileAsBinary(): " + e.getMessage());
+			debug("[milkAdmin] ERROR in readFileAsBinary(): " + e.getMessage());
 		}
 	}
 
 	public void onRTKStringReceived(String s){
-		System.out.println("From wrapper: "+s);
+		debug("From wrapper: "+s);
 	}
 
 	// Add to main class
@@ -125,8 +128,8 @@ public class WebServer extends Thread implements RTKListener{
 		try { field.setAccessible(true); mcs = (MinecraftServer) field.get(craftserver); }
 		catch (IllegalArgumentException ex) {return; }
 		catch (IllegalAccessException ex) {return; }
-		if ( (!mcs.g) && (MinecraftServer.a(mcs)) )
-			mcs.a(cmd, mcs);
+		if ( (!mcs.isStopped) && (MinecraftServer.isRunning(mcs)) )
+			mcs.issueCommand(cmd, mcs);
 	}
 	
 	public String readConsole(){
@@ -146,8 +149,7 @@ public class WebServer extends Thread implements RTKListener{
 			}
 		}
 		catch (Exception e) {
-			if(Debug)
-				System.out.println("[milkAdmin] ERROR in readConsole(): " + e.getMessage());
+			debug("[milkAdmin] ERROR in readConsole(): " + e.getMessage());
 		}
 		return console;	
 	}
@@ -156,11 +158,14 @@ public class WebServer extends Thread implements RTKListener{
 		String data = "";
 		try{
 			String version = milkAdminInstance.getServer().getVersion();
+			Matcher result = Pattern.compile("b([0-9]+)jnks").matcher(version);
+			result.find();
+			String build = result.group(1);
 			String totmem = String.valueOf(Runtime.getRuntime().totalMemory() / 1024 / 1024);
 			String maxmem = String.valueOf(Runtime.getRuntime().maxMemory() / 1024 / 1024);
 			String freemem = String.valueOf(Runtime.getRuntime().freeMemory() / 1024 / 1024);
 			String usedmem = String.valueOf((Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory())/ 1024 / 1024);
-			String users = (Lang.equals("en") ? "\"No players online\"":"\"No hay jugadores conectados\"");
+			String users = "[]";
 			String amountusers = String.valueOf(milkAdminInstance.getServer().getOnlinePlayers().length);
 			if ( milkAdminInstance.getServer().getOnlinePlayers().length > 0 ){
 				users = "[";
@@ -173,11 +178,10 @@ public class WebServer extends Thread implements RTKListener{
 				}
 				users = users + "]";
 			}
-			data = "{\"version\":\""+version+"\",\"totmem\":\""+totmem+"\",\"maxmem\":\""+maxmem+"\",\"freemem\":\""+freemem+"\",\"usedmem\":\""+usedmem+"\",\"amountusers\":\""+amountusers+"\",\"users\":"+users+"}";
+			data = "{\"lastrestart\":\""+MilkAdmin.initTime+"\",\"version\":\""+version+"\",\"build\":\""+build+"\",\"totmem\":\""+totmem+"\",\"maxmem\":\""+maxmem+"\",\"freemem\":\""+freemem+"\",\"usedmem\":\""+usedmem+"\",\"amountusers\":\""+amountusers+"\",\"users\":"+users+"}";
 		}
 		catch (Exception e) {
-			if(Debug)
-				System.out.println("[milkAdmin] ERROR in infoData(): " + e.getMessage());
+			debug("[milkAdmin] ERROR in infoData(): " + e.getMessage());
 		}
 		return data;
 	}
@@ -199,41 +203,41 @@ public class WebServer extends Thread implements RTKListener{
 			}
 		}
 		catch (IOException e) {
-			if(Debug)
-				System.out.println("[milkAdmin] ERROR in readLine(): " + e.getMessage());
+			debug("[milkAdmin] ERROR in readLine(): " + e.getMessage());
 		} 
 	}
 	
 	public void listBans(){
 		//[{"players":[{"name":"pepito"},{"name":"sharkale31"}]},{"ips":[{"ip":"127.0.0.1"},{"ip":"127.0.0.2"}]}]
 		String listban = "";
-		Iterator<String> i;
+		Iterator<Map.Entry<String, String>> i;
+		Map.Entry<String, String> e;
 		try {
-			if(Debug) System.out.println("[milkAdmin] Writing listbans.");
+			debug("[milkAdmin] Writing listbans.");
 			// names
-			readLine(bannedplayers, bannedPlayers);
-			i = bannedPlayers.iterator();
+			Map<String,String> banNames = banListName.returnMap();
+			i = banNames.entrySet().iterator();
 			listban = "[{\"players\":[";
 			while(i.hasNext()) {
-				
-				listban = listban + "{\"name\":\"" + i.next() + "\"}";
+				e = i.next();
+				listban = listban + "{\"name\":\"" + e.getKey() + "\",\"cause\":\"" + e.getValue() + "\"}";
 				if(i.hasNext()) listban = listban + ",";
 			}
 			listban = listban + "]},";
 			// ips
-			readLine(bannedips, bannedIps);
-			i = bannedIps.iterator();
+			Map<String,String> banIps = banListIp.returnMap();
+			i = banIps.entrySet().iterator();
 			listban = listban + "{\"ips\":[";
 			while(i.hasNext()) {
-				listban = listban + "{\"ip\":\"" + i.next() + "\"}";
+				e = i.next();
+				listban = listban + "{\"ip\":\"" + e.getKey() + "\",\"cause\":\"" + e.getValue() + "\"}";
 				if(i.hasNext()) listban = listban + ",";
 			}
 			listban = listban + "]}]";
-		} catch (Exception e) {
-			if(Debug)
-				System.out.println("[milkAdmin] ERROR in listBans(): " + e.getMessage());
+		} catch (Exception err) {
+			debug("[milkAdmin] ERROR in listBans(): " + err.getMessage());
 		}
-		if(Debug) System.out.println("[milkAdmin] Banlist - Sending JSON lenght: "+listban.length());
+		debug("[milkAdmin] Banlist - Sending JSON lenght: "+listban.length());
 		print(listban, "application/json");
 	}
 
@@ -246,7 +250,7 @@ public class WebServer extends Thread implements RTKListener{
 			}
 
 			if(!src.exists()){
-				System.out.println("Directory does not exist.");
+				System.out.println("[milkAdmin] Directory does not exist.");
 				return;
 			}
 			String files[] = src.list();
@@ -291,8 +295,7 @@ public class WebServer extends Thread implements RTKListener{
 			message = out;
 
 		} catch (NoSuchAlgorithmException e) {
-			if(Debug)
-				System.out.println("[milkAdmin] ERROR in sha512me(): " + e.getMessage());
+			debug("[milkAdmin] ERROR in sha512me(): " + e.getMessage());
 		}
 		return message;
 	}
@@ -323,38 +326,45 @@ public class WebServer extends Thread implements RTKListener{
 			out.writeBytes(data);
 			out.close();
 		} catch (Exception e) { 
-			if(Debug)
-				System.out.println("[milkAdmin] ERROR in print(): " + e.getMessage());
+			debug("[milkAdmin] ERROR in print(): " + e.getMessage());
 		}
 	}
 
 	public void load_settings(){
 		Settings.load();
-		Lang = Settings.getString("Settings.Language", "english").toLowerCase();
 		Debug = Settings.getBoolean("Settings.Debug", false);
 		Port = Settings.getInt("Settings.Port", 64712);
 		consoleLines = Settings.getInt("Settings.ConsoleLines", 13);
 		BannedString = Settings.getString("Strings.Banned", "Banned from this server");
 		KickedString = Settings.getString("Strings.Kicked", "Kicked!");
-		GiveItemString = Settings.getString("Strings.GiveItem", "You have recieved a");
-		TakeAwayString = Settings.getString("Strings.TakeAwayItem", "has been taken away from you :(");
 		NoSavePropertiesFile serverProperties = new NoSavePropertiesFile("server.properties");
 		levelname = serverProperties.getString("level-name");
 	}
-
+	
+	public String getParam(String param, String URL)
+	{
+		Pattern regex = Pattern.compile("[\\?&]"+param+"=([^&#]*)");
+		Matcher result = regex.matcher(URL);
+		if(result.find()){
+			try{
+				debug(result.group(0));
+				String resdec = URLDecoder.decode(result.group(1),"UTF-8");
+				debug(resdec);
+				return resdec;
+			}catch (UnsupportedEncodingException e){
+				debug("[milkAdmin] ERROR in getParam(): " + e.getMessage());
+				return "";
+			}
+		}else
+			return "";
+	}
+	
 	public void run(){
 		load_settings();
-		if (Lang.equals("spanish")){
-			Lang = "es";
-		}else if(Lang.equals("english")){
-			Lang = "en";
-		}else{
-			Lang = "en";
-		}
 		try{
 			if ( WebServerMode == 0 ){
 				ServerSocket s = new ServerSocket(Port);
-				System.out.println("[milkAdmin] Listening on localhost:" + Port);
+				System.out.println("[milkAdmin] Listening on localhost:"+Port);
 				for (;;)
 					new WebServer(milkAdminInstance, s.accept());
 			} else {
@@ -365,56 +375,57 @@ public class WebServer extends Thread implements RTKListener{
 						if ( l.startsWith("GET") ){
 							g = (l.split(" "))[1];
 							if ( g.startsWith("/server/login") ){
-								String[] parts = g.replace("&password", "").split("=");
-								if(parts.length == 3){
-									if(adminList.containsKey(parts[1])){
-										String login = adminList.getString(parts[1], parts[2]);
-										if(login.contentEquals(sha512me(parts[2]))){
+								String username = getParam("username", g);
+								String password = getParam("password", g);
+	                        	if(username.length() > 0 && password.length() > 0){
+									if(adminList.containsKey(username)){
+										String login = adminList.getString(username, password);
+										if(login.contentEquals(sha512me(password))){
 											LoggedIn.setString(WebServerSocket.getInetAddress().getHostAddress(), WebServerSocket.getInetAddress().getCanonicalHostName());
 											LoggedIn.setString(WebServerSocket.getInetAddress().getCanonicalHostName(), WebServerSocket.getInetAddress().getHostAddress());
-											json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"0; url=/\"></head></html>";
+											json = "ok";
 										}else{
-											json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"0; url=../invalidlogin.html\"></head></html>";
+											json = "error";
 										}
 									}else{
-										json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"0; url=../invalidlogin.html\"></head></html>";
+										json = "error";
 									}
 								}else{
-									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"0; url=../invalidlogin.html\"></head></html>";
+									json = "error";
 								}
-								print(json, "text/html");
+	                        	print(json, "text/html");
 							}
-							else if (!noSaveLoggedIn.containsKey(WebServerSocket.getInetAddress().getCanonicalHostName()) && !noSaveLoggedIn.containsKey(WebServerSocket.getInetAddress().getHostAddress())){
-								if( g.equals("/")){
-									readFileAsBinary("./milkAdmin/html/login."+Lang+".html");
+							else if (!noSaveLoggedIn.containsKey(WebServerSocket.getInetAddress().getCanonicalHostName()) || !noSaveLoggedIn.containsKey(WebServerSocket.getInetAddress().getHostAddress())){
+								if( g.equals("/") || g.equals("/index.html")){
+									readFileAsBinary("./milkAdmin/html/login.html");
 								}
-								else if( g.equals("/invalidlogin.html")){
-									readFileAsBinary("./milkAdmin/html/invalidlogin."+Lang+".html");
-								}
-								else if( g.equals("/style.css")){
-									readFileAsBinary("./milkAdmin/html/style.css");
+								else if( g.startsWith("/images/") || g.startsWith("/js/") || g.startsWith("/css/")){
+									readFileAsBinary("./milkAdmin/html" + g);
 								}
 								//OTHERWISE LOAD PAGES
 								else{
-									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"0; url=/\"></head></html>";
-									print(json, "text/html");
+									readFileAsBinary("./milkAdmin/html/login.html");
 								}
 							}else{
 								if(adminList.containsKey("admin")){
 									if( g.equals("/register.html")){
-										readFileAsBinary("./milkAdmin/html/register."+Lang+".html");
+										readFileAsBinary("./milkAdmin/html/register.html");
 									}
-									else if( g.equals("/style.css")){
-										readFileAsBinary("./milkAdmin/html/style.css");
+									else if( g.startsWith("/images/") || g.startsWith("/js/") || g.startsWith("/css/")){
+										readFileAsBinary("./milkAdmin/html" + g);
 									}
 									else if ( g.startsWith("/server/account_create") ){
-										String[] parts = g.replace("&password", "").split("=");
-										saveAdminList.setString(parts[1], sha512me(parts[2]));
-										saveAdminList.removeKey("admin");
-										json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"0; url=/\"></head></html>";
+										String username = getParam("username", g);
+										String password = getParam("password", g);
+			                        	if(username.length() > 0 && password.length() > 0){
+			                        		saveAdminList.setString(username, sha512me(password));
+			                        		saveAdminList.removeKey("admin");
+			                        		json = "ok:account-created";
+			                        	}else
+			                        		json = "error:bad-parameters";
 										print(json, "text/html");
 									}else{
-										readFileAsBinary("./milkAdmin/html/register."+Lang+".html");
+										readFileAsBinary("./milkAdmin/html/register.html");
 									}
 								}
 								//FINISHED LOGIN
@@ -422,66 +433,76 @@ public class WebServer extends Thread implements RTKListener{
 								//SERVER
 								//AREA
 								else if ( g.startsWith("/server/account_create") ){
-									String[] parts = g.replace("&password", "").split("=");
-									saveAdminList.setString(parts[1], sha512me(parts[2]));
-									json = "ok:"+(Lang.equals("en") ? "Account created.":"Cuenta Creada.");
+									String username = getParam("username", g);
+									String password = getParam("password", g);
+		                        	if(username.length() > 0 && password.length() > 0){
+		                        		saveAdminList.setString(username, sha512me(password));
+		                        		json = "ok:account-created";
+		                        	}else
+		                        		json = "error:bad-parameters";
 									print(json, "text/plain");
 								}
 								else if ( g.equals("/server/logout") ){
 									LoggedIn.removeKey(WebServerSocket.getInetAddress().getCanonicalHostName());
 									LoggedIn.removeKey(WebServerSocket.getInetAddress().getHostAddress());
-									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"0; url=/\"></head></html>";
-									print(json, "text/html");
+									json = "ok";
+									print(json, "text/plain");
 								}
-								else if ( g.equals("/server/save") ){
+								else if ( g.equals("/save") ){
 									consoleCommand("save-all");
-									json = "ok:"+(Lang.equals("en") ? "World Saved":"Mundo Guardado");
+									json = "ok:world-saved";
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/server/say") ){
-									String[] parts =  g.replace("+", " ").replace("%21", "!").replace("%40", "@").replace("%23", "#").replace("%24", "$").replace("%25", "%").replace("%5E", "^").replace("%26", "&").replace("%28", "(").replace("%29", ")").replace("%2B", "+").replace("%7B", "{").replace("%5B", "[").replace("%7D", "}").replace("%5D", "]").replace("%7E", "~").replace("%60", "`").replace("%5C", "\\").replace("%7C", "|").replace("%3A", ":").replace("%3B", ";").replace("%22", "\"").replace("%27", "'").replace("%3C", "<").replace("%2C", ",").replace("%3E", ">").replace("%3F", "?").replace("%2F", "/").split("=");
-									if(parts[1].startsWith("/")){
-										String command = parts[1].replace("/", "");
-										consoleCommand(command);
-									}else{
-										consoleCommand("say " + parts[1]);
-									}
-									json = "ok:"+(Lang.equals("en") ? "Console Message Sent":"Mensaje de Consola Enviado");
+									String text = getParam("message", g);
+		                        	if(text.length() > 0){
+										if(text.startsWith("/")){
+											String command = text.replace("/", "");
+											consoleCommand(command);
+										}else{
+											consoleCommand("say " + text);
+										}
+										json = "ok:message-sent";
+		                        	}else
+		                        		json = "error:message-empty";
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/server/broadcast_message") ){
-									String[] parts = g.replace("+", " ").replace("%21", "!").replace("%40", "@").replace("%23", "#").replace("%24", "$").replace("%25", "%").replace("%5E", "^").replace("%26", "&").replace("%28", "(").replace("%29", ")").replace("%2B", "+").replace("%7B", "{").replace("%5B", "[").replace("%7D", "}").replace("%5D", "]").replace("%7E", "~").replace("%60", "`").replace("%5C", "\\").replace("%7C", "|").replace("%3A", ":").replace("%3B", ";").replace("%22", "\"").replace("%27", "'").replace("%3C", "<").replace("%2C", ",").replace("%3E", ">").replace("%3F", "?").replace("%2F", "/").split("=");
-
-									if(parts.length == 2){
-										milkAdminInstance.getServer().broadcastMessage(parts[1].replace("%3D", "="));
-										json = "ok:"+(Lang.equals("en") ? "Broadcasted Message":"Mensaje Emitido");
+									String text = getParam("message", g);
+		                        	if(text.length() > 0){
+										milkAdminInstance.getServer().broadcastMessage(text);
+										json = "ok:broadcasted-message";
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
-								else if ( g.equals("/server/stop") ){
-									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString("./milkAdmin/html/wait."+Lang+".html");
+								else if ( g.equals("/stop") ){
+									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString("./milkAdmin/html/wait.html");
 									print(json, "text/html");
+									try {
+										Thread.sleep(1000);
+									} catch (InterruptedException e) {
+										debug("[milkAdmin] ERROR in Stop: " + e.getMessage());
+									}
 									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER);
 								}
-								else if ( g.equals("/server/reload_server") ){
+								else if ( g.equals("/reload_server") ){
 									milkAdminInstance.getServer().reload();
-									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString("./milkAdmin/html/wait."+Lang+".html");
+									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString("./milkAdmin/html/wait.html");
 									print(json, "text/html");
 								}
-								else if ( g.equals("/server/restart_server") ){
+								else if ( g.equals("/restart_server") ){
 									try{
 										milkAdminInstance.api.executeCommand(RTKInterface.CommandType.RESTART);
 									}catch(IOException e){
-										if(Debug)
-											System.out.println("[milkAdmin] ERROR in restart_server: " + e.getMessage());
+										debug("[milkAdmin] ERROR in restart_server: " + e.getMessage());
 									}
-									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString("./milkAdmin/html/wait."+Lang+".html");
+									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString("./milkAdmin/html/wait.html");
 									print(json, "text/html");
 								}
-								else if ( g.equals("/server/force_stop") ){
-									json = "ok:"+(Lang.equals("en") ? "Stopped server":"Server Detenido");
+								else if ( g.equals("/force_stop") ){
+									json = "ok:force-stop";
 									print(json, "text/plain");
 									System.exit(1);
 								}
@@ -498,22 +519,22 @@ public class WebServer extends Thread implements RTKListener{
 									print(json, "application/json");
 								}
 								else if ( g.startsWith("/server/disable_plugin") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										milkAdminInstance.getServer().getPluginManager().disablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(parts[1]));
-										json = "ok:"+(Lang.equals("en") ? parts[1]+" Plugin disabled":"Plugin "+parts[1]+" desactivado");
+									String plugin = getParam("plugin", g);
+		                        	if(plugin.length() > 0){
+										milkAdminInstance.getServer().getPluginManager().disablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(plugin));
+										json = "ok:plugin-disabled:_NAME_,"+plugin;
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/server/enable_plugin") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										milkAdminInstance.getServer().getPluginManager().enablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(parts[1]));
-										json = "ok:"+(Lang.equals("en") ? parts[1]+" Plugin enabled":"Plugin "+parts[1]+" activado");
+									String plugin = getParam("plugin", g);
+		                        	if(plugin.length() > 0){
+										milkAdminInstance.getServer().getPluginManager().enablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(plugin));
+										json = "ok:plugin-enabled:_NAME_,"+plugin;
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
@@ -521,17 +542,18 @@ public class WebServer extends Thread implements RTKListener{
 									print(readConsole(), "text/plain");
 								}
 								else if(g.startsWith("/server/properties_edit")) {
-									String[] parts = g.replace("?to", "").split("=");
-									if(parts.length == 3){
-										BukkitProperties.setString(parts[1], parts[2]);
-										json = "ok:"+(Lang.equals("en") ? "Edited Property":"Propiedad Editada");
+									String property = getParam("property", g);
+									String value = getParam("value", g);
+		                        	if(property.length() > 0 && value.length() > 0){
+										BukkitProperties.setString(property, value);
+										json = "ok:edited-property";
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 											
 									print(json, "text/plain");
 								}
-								else if(g.equals("/server/backup")){
+								else if(g.equals("/backup")){
 									consoleCommand("save-all");
 									DateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd_HH-mm-ss");
 									Date date = new Date();
@@ -542,24 +564,29 @@ public class WebServer extends Thread implements RTKListener{
 									File destFolder = new File("backups/" + datez + "/" + levelname);
 									try{
 										copyFolder(srcFolder,destFolder);
-										json = "ok:"+(Lang.equals("en") ? "Backed up!":"Mundo Respaldado");
+										json = "ok:world-backed-up";
 										print(json, "text/plain");
 									}catch(IOException e){
-										if(Debug)
-											System.out.println("[milkAdmin] ERROR in backup: " + e.getMessage());
+										debug("[milkAdmin] ERROR in backup: " + e.getMessage());
 										return;
 									}
 								}
-								else if(g.startsWith("/server/restore")){
-									String[] parts = g.split("=");
-									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/server/restore=" + parts[1] + "\">" + readFileAsString("./milkAdmin/html/wait."+Lang+".html");
-									print(json, "text/html");
+								else if(g.startsWith("/restore")){
+									String id = getParam("id", g);
+									if(id.length() > 0){
+										json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/server/restore?id="+id+"\">" + readFileAsString("./milkAdmin/html/wait.html");
+										print(json, "text/html");
+									}else
+										readFileAsBinary("./milkAdmin/html/index.html");
 									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER);
 								}
-								else if(g.startsWith("/server/delete")){
-									String[] parts = g.split("=");
-									deleteDirectory(new File("backups/"+parts[1]));
-									json = "ok:"+(Lang.equals("en") ? "Backup Deleted!":"Respaldo Eliminado");
+								else if(g.startsWith("/delete")){
+									String id = getParam("id", g);
+									if(id.length() > 0){
+										deleteDirectory(new File("backups/"+id));
+										json = "ok:delete-backup";
+									}else
+										json = "error:bad-parameters";
 									print(json, "text/plain");
 								}
 								else if(g.equals("/info/list_backups.json")){
@@ -595,284 +622,314 @@ public class WebServer extends Thread implements RTKListener{
 								//PLAYER AREA
 								////////////////
 								else if ( g.startsWith("/player/kick_user") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											milkAdminInstance.getServer().getPlayer(parts[1]).kickPlayer(KickedString);
-											json = "ok:"+(Lang.equals("en") ? parts[1]+" kicked!":parts[1]+" fue expulsado de la partida");
+									String user = getParam("user", g);
+									String cause = getParam("cause", g);
+									if(user.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											String kickString = KickedString;
+											if(cause.length() > 0)
+												kickString = cause;
+											p.kickPlayer(kickString);
+											json = "ok:kick-player:_NAME_,"+user;
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										}
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/give_item") ){
-									String[] parts = g.replace("&item", "").replace("&amount", "").split("=");
-									if(parts.length == 4){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											milkAdminInstance.getServer().getPlayer(parts[1]).getInventory().addItem(new ItemStack(Material.getMaterial(Integer.valueOf(parts[2])), Integer.valueOf(parts[3])));
-											json = "ok:"+(Lang.equals("en") ? "Items given":"Items entregados");
-											milkAdminInstance.getServer().getPlayer(parts[1]).sendMessage(GiveItemString + Material.getMaterial(Integer.valueOf(parts[2])));
+									String user = getParam("user", g);
+									String item = getParam("item", g);
+									String amount = getParam("amount", g);
+									if(user.length() > 0 && amount.length() > 0 && item.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											p.getInventory().addItem(new ItemStack(Material.getMaterial(Integer.valueOf(item)), Integer.valueOf(amount)));
+											json = "ok:items-given:_NAME_,"+user+",_AMOUNT_,"+amount+",_ITEM_,"+Material.getMaterial(Integer.valueOf(item));
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										} 
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/remove_item") ){
-									String[] parts = g.replace("&item", "").replace("&amount", "").split("=");
-									if(parts.length == 4){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											milkAdminInstance.getServer().getPlayer(parts[1]).getInventory().removeItem(new ItemStack(Material.getMaterial(Integer.valueOf(parts[2])), Integer.valueOf(parts[3])));
-											json = "ok:"+(Lang.equals("en") ? "Items removed from the inventory":"Items eliminado del invetario");
-											milkAdminInstance.getServer().getPlayer(parts[1]).sendMessage(Material.getMaterial(Integer.valueOf(parts[2])) + TakeAwayString);
+									String user = getParam("user", g);
+									String item = getParam("item", g);
+									String amount = getParam("amount", g);
+									if(user.length() > 0 && amount.length() > 0 && item.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											p.getInventory().removeItem(new ItemStack(Material.getMaterial(Integer.valueOf(item)), Integer.valueOf(amount)));
+											json = "ok:items-removed:_NAME_,"+user+",_AMOUNT_,"+amount+",_ITEM_,"+Material.getMaterial(Integer.valueOf(item));
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										}
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/get_health") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											json = "ok:"+String.valueOf(milkAdminInstance.getServer().getPlayer(parts[1]).getHealth());
+									String user = getParam("user", g);
+									if(user.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											json = "ok:"+String.valueOf(p.getHealth());
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										}
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/set_health") ){
-									String[] parts = g.replace("&amount", "").split("=");
-									if(parts.length == 3){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											milkAdminInstance.getServer().getPlayer(parts[1]).setHealth(Integer.valueOf(parts[2]));
-											if(parts[2].equals("0")){
-												json = "ok:"+(Lang.equals("en") ? "Player Killed":"Jugador Asesinado");
-											}else{
-												json = "ok:"+(Lang.equals("en") ? "Health changed to ":"Vida cambiada a ")+parts[2]+"/20";
+									String user = getParam("user", g);
+									String amount = getParam("amount", g);
+									if(user.length() > 0 && amount.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											try{
+												int health = Integer.parseInt(amount,10);
+												if(health >= 0 && health <=20){
+													p.setHealth(health);
+													if(health == 0){
+														json = "ok:player-killed:_NAME_,"+user;
+													}else{
+														json = "ok:health-changed:_NAME_,"+user+",_AMOUNT_,"+amount;
+													}
+												}else{
+													json = "error:bad-parameters";
+												}
+											}catch(NumberFormatException err){
+												json = "error:bad-parameters";
 											}
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										}
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
+									}
+									print(json, "text/plain");
+								}
+								else if ( g.startsWith("/player/ban_player") ){
+									String user = getParam("user", g);
+									String cause = getParam("cause", g);
+									if(user.length() > 0){
+										String banstring = BannedString;
+										if(cause.length() > 0)
+											banstring = cause;
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											banListName.setString(p.getName(), banstring);
+											p.kickPlayer(banstring);
+										}else{
+											banListName.setString(user, banstring);
+										}
+										json = "ok:player-banned:_NAME_,"+user;
+									}else{
+										json = "error:bad-parameters";
+									}
+									print(json, "text/plain");
+								}
+								else if ( g.startsWith("/player/ban_ip") ){
+									String ip = getParam("ip", g);
+									String cause = getParam("cause", g);
+									if(ip.length() > 0){
+										String banstring = BannedString;
+										if(cause.length() > 0)
+											banstring = cause;
+										Player p = milkAdminInstance.getServer().getPlayer(ip);
+										if(p != null && p.isOnline()){
+											banListIp.setString(String.valueOf(p.getAddress()).split("/")[1].split(":")[0], banstring);
+											p.kickPlayer(banstring);
+										}else{
+											banListIp.setString(ip, banstring);
+										}
+										json = "ok:ip-banned:_IP_,"+ip;
+									}else{
+										json = "error:bad-parameters";
+									}
+									print(json, "text/plain");
+								}
+								else if ( g.startsWith("/player/unban_player") ){
+									String user = getParam("user", g);
+									if(user.length() > 0){
+										if(banListName.keyExists(user)){
+											banListName.removeKey(user);
+											json = "ok:player-unbanned:_NAME_,"+user;
+										}else{
+											json = "error:player-not-banned";
+										}
+									}else{
+										json = "error:bad-parameters";
+									}
+									print(json, "text/plain");
+								}
+								else if ( g.startsWith("/player/unban_ip") ){
+									String ip = getParam("user", g);
+									if(ip.length() > 0){
+										if(banListIp.keyExists(ip)){
+											banListIp.removeKey(ip);
+											json = "ok:ip-unbanned:_IP_,"+ip;
+										}else{
+											json = "error:ip-not-banned";
+										}
+									}else{
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/shoot_arrow") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											milkAdminInstance.getServer().getPlayer(parts[1]).shootArrow();
-											json = "ok:"+(Lang.equals("en") ? "Arrow Shoot!":"Flecha disparada!");
+									String user = getParam("user", g);
+									if(user.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											p.shootArrow();
+											json = "ok:arrow-shooted";
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										}
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.equals("/player/banlist.json") ){
 									listBans();
 								}
-								else if ( g.startsWith("/player/ban_player") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										banList.setString(milkAdminInstance.getServer().getPlayer(parts[1]).getName().toString(), "true");
-										milkAdminInstance.getServer().getPlayer(parts[1]).kickPlayer(BannedString);
-										json = "ok:"+(Lang.equals("en") ? "Player Banned!":"Jugador Baneado!");
-									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
-									}
-									print(json, "text/plain");
-								}
-								else if ( g.startsWith("/player/ban_ip") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											banList.setString(String.valueOf(milkAdminInstance.getServer().getPlayer(parts[1]).getAddress()).split("/")[1].split(":")[0], "true");
-											milkAdminInstance.getServer().getPlayer(parts[1]).kickPlayer(BannedString);
-										}else{
-											banList.setString(parts[1], "true");
-										}
-										json = "ok:"+(Lang.equals("en") ? "IP Banned!":"IP Baneada!");
-									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
-									}
-									print(json, "text/plain");
-								}
-								else if ( g.startsWith("/player/unban_player") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										banList.setString(milkAdminInstance.getServer().getPlayer(parts[1]).getName(), "false");
-										json = "ok:"+(Lang.equals("en") ? "Player Unbanned":"Jugador Desbaneado!");
-									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
-									}
-									print(json, "text/plain");
-								}
-								else if ( g.startsWith("/player/unban_ip") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										banList.setString(parts[1], "false");
-										json = "ok:"+(Lang.equals("en") ? "IP Unbanned":"IP Desbaneada!");
-									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
-									}
-									print(json, "text/plain");
-								}
-								else if ( g.startsWith("/player/ban") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										banList.setString(parts[1], "true");
-										json = "ok:"+(Lang.equals("en") ? "Player Banned":"Jugador Baneado!");
-									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
-									}
-									print(json, "text/plain");
-								}
-								else if ( g.startsWith("/player/unban") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										banList.setString(parts[1], "false");
-										json = "ok:"+(Lang.equals("en") ? "Player Unbanned":"Jugador Desbaneado!");
-									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
-									}
-									print(json, "text/plain");
-								}
-								else if ( g.startsWith("/player/delete") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										banList.removeKey(parts[1]);
-										json = "ok:"+(Lang.equals("en") ? "Registry Deleted":"Registro Eliminado!");
-									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
-									}
-									print(json, "text/plain");
-								}
 								else if ( g.startsWith("/player/throw_snowball") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											milkAdminInstance.getServer().getPlayer(parts[1]).throwSnowball();
-											json = "ok:"+(Lang.equals("en") ? "Snowball thrown!":"Bola de nieve lanzada!");
+									String user = getParam("user", g);
+									if(user.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											p.throwSnowball();
+											json = "ok:throw-snowball";
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										}
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/throw_egg") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											milkAdminInstance.getServer().getPlayer(parts[1]).throwEgg();
-											json = "ok:"+(Lang.equals("en") ? "Egg thrown!":"Huevo Lanzado!");
+									String user = getParam("user", g);
+									if(user.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											p.throwEgg();
+											json = "ok:throw-egg";
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										}
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/change_display_name") ){
-									String[] parts = g.replace("&name", "").split("=");
-									if(parts.length == 3){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											milkAdminInstance.getServer().getPlayer(parts[1]).setDisplayName(parts[2]);
-											json = "ok:"+(Lang.equals("en") ? "A "+parts[1]+" se le cambio el nombre a "+parts[2]:parts[1]+"'s name changed to "+parts[2]);
+									String user = getParam("user", g);
+									String name = getParam("name", g);
+									if(user.length() > 0 && name.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											p.setDisplayName(name);
+											json = "ok:change-name:_OLD_,"+user+",_NEW_,"+name;
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										}
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/teleport_to_player") ){
-									String[] parts = g.replace("&to_user", "").split("=");
-									if(parts.length == 3){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() && milkAdminInstance.getServer().getPlayer(parts[2]).isOnline()){
-											milkAdminInstance.getServer().getPlayer(parts[1]).teleport(milkAdminInstance.getServer().getPlayer(parts[2]));
-											json = "ok:"+(Lang.equals("en") ? "Player Teleported":"Jugador Teletransportado");
+									String user = getParam("user", g);
+									String touser = getParam("to_user", g);
+									if(user.length() > 0 && touser.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										Player p2 = milkAdminInstance.getServer().getPlayer(touser);
+										if(p != null && p2!= null && p.isOnline() && p2.isOnline()){
+											p.teleport(p2);
+											json = "ok:player-teleported";
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										}
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/teleport_to_location") ){
-									String[] parts = g.replace("&x", "").replace("&y", "").replace("&z", "").split("=");
-									if(parts.length == 5){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											milkAdminInstance.getServer().getPlayer(parts[1]).teleport(new Location(milkAdminInstance.getServer().getPlayer(parts[1]).getWorld(), Integer.valueOf(parts[2]), Integer.valueOf(parts[3]), Integer.valueOf(parts[4])));
-											json = "ok:"+(Lang.equals("en") ? "Player Teleported":"Jugador Teletransportado");
+									String user = getParam("user", g);
+									String x = getParam("x", g);
+									String y = getParam("y", g);
+									String z = getParam("z", g);
+									if(user.length() > 0 && x.length() > 0 && y.length() > 0 && z.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											p.teleport(new Location(p.getWorld(), Integer.valueOf(x), Integer.valueOf(y), Integer.valueOf(z)));
+											json = "ok:player-teleported";
 										}else{
-											json = "error:"+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado");
+											json = "error:player-not-connected";
 										}
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/is_online") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										json = "ok:"+String.valueOf(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline());
+									String user = getParam("user", g);
+									if(user.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline())
+											json = "ok:"+String.valueOf(p.isOnline());
+										else
+											json = "ok:false";
 									}else{
-										json = "error:"+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos");
+										json = "error:bad-parameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( g.startsWith("/player/get_ip_port.json") ){
-									String[] parts = g.split("=");
-									if(parts.length == 2){
-										if(milkAdminInstance.getServer().getPlayer(parts[1]).isOnline() == true){
-											String ip_port = String.valueOf(milkAdminInstance.getServer().getPlayer(parts[1]).getAddress()).split("/")[1];
+									String user = getParam("user", g);
+									if(user.length() > 0){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											String ip_port = String.valueOf(p.getAddress()).split("/")[1];
 											json = "{\"status\":\"ok\",\"ip\":\""+ip_port.split(":")[0]+"\",\"port\":\""+ip_port.split(":")[1]+"\"}";
 										}else{
-											json = "{\"status\":\"error\", \"error\":\""+(Lang.equals("en") ? "The player is not connected":"El jugador no esta conectado")+"\"}";
+											json = "{\"status\":\"error\", \"error\":\"player-not-connected\"}";
 										}
 									}else{
-										json = "{\"status\":\"error\", \"error\":\""+(Lang.equals("en") ? "Bad Parameters":"Parametros erroneos")+"\"}";
+										json = "{\"status\":\"error\", \"error\":\"bad-parameters\"}";
 									}
 									print(json, "application/json");
 								}
-								else if( g.equals("/")){
-									readFileAsBinary("./milkAdmin/html/index."+Lang+".html");
+								else if( g.equals("/") || g.equals("/index.html")){
+									readFileAsBinary("./milkAdmin/html/index.html");
 								}
-								else{
-									readFileAsBinary("./milkAdmin/html/" + g);
+								else if( g.startsWith("/images/") || g.startsWith("/js/") || g.startsWith("/css/")){
+									readFileAsBinary("./milkAdmin/html" + g);
 								}
+								else
+									readFileAsBinary("./milkAdmin/html/index.html");
 							}
 						}
 					}
 				} catch (Exception e) {
-					if(Debug)
-						System.out.println("[milkAdmin] ERROR in ServerParser: " + e);
+					debug("[milkAdmin] ERROR in ServerParser: " + e.getLocalizedMessage());
 				}
 			}
-		} catch (Exception e){
-			if(Debug)
-				System.out.println("[milkAdmin] ERROR in ServerInitialize: " + e.getMessage());
+		} catch (IOException e){
+			debug("[milkAdmin] ERROR in ServerInitialize: " + e.getMessage());
 		}
 	}
 }
