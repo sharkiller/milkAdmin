@@ -28,6 +28,7 @@ public class WebServer extends Thread implements RTKListener{
 	int WebServerMode;
 	MilkAdmin milkAdminInstance;
 	Socket WebServerSocket;
+	ServerSocket rootSocket = null;
 	static Logger log = Logger.getLogger("Minecraft");
 	String Lang;
 	boolean Debug;
@@ -36,18 +37,19 @@ public class WebServer extends Thread implements RTKListener{
 	String BannedString;
 	String KickedString;
 	String levelname;
-	Configuration Settings = new Configuration(new File("milkAdmin/settings.yml"));
+	String PluginDir = "plugins/milkAdmin/";
+	Configuration Settings = new Configuration(new File(PluginDir+"settings.yml"));
 	PropertiesFile BukkitProperties = new PropertiesFile("server.properties");
-	PropertiesFile banListName = new PropertiesFile("milkAdmin/banlistname.ini");
-	PropertiesFile banListIp = new PropertiesFile("milkAdmin/banlistip.ini");
+	PropertiesFile banListName = new PropertiesFile(PluginDir+"banlistname.ini");
+	PropertiesFile banListIp = new PropertiesFile(PluginDir+"banlistip.ini");
 	String bannedplayers = "banned-players.txt";
 	ArrayList<String> bannedPlayers = new ArrayList<String>();
 	String bannedips = "banned-ips.txt";
 	ArrayList<String> bannedIps = new ArrayList<String>();
-	NoSavePropertiesFile adminList = new NoSavePropertiesFile("milkAdmin/admins.ini");
-	PropertiesFile saveAdminList = new PropertiesFile("milkAdmin/admins.ini");
-	NoSavePropertiesFile noSaveLoggedIn = new NoSavePropertiesFile("milkAdmin/loggedin.ini");
-	PropertiesFile LoggedIn = new PropertiesFile("milkAdmin/loggedin.ini");
+	NoSavePropertiesFile adminList = new NoSavePropertiesFile(PluginDir+"admins.ini");
+	PropertiesFile saveAdminList = new PropertiesFile(PluginDir+"admins.ini");
+	NoSavePropertiesFile noSaveLoggedIn = new NoSavePropertiesFile(PluginDir+"loggedin.ini");
+	PropertiesFile LoggedIn = new PropertiesFile(PluginDir+"loggedin.ini");
 
 	public WebServer(MilkAdmin i){
 		WebServerMode = 0;
@@ -198,10 +200,10 @@ public class WebServer extends Thread implements RTKListener{
 			String maxmem = String.valueOf(Runtime.getRuntime().maxMemory() / 1024 / 1024);
 			String freemem = String.valueOf(Runtime.getRuntime().freeMemory() / 1024 / 1024);
 			String usedmem = String.valueOf((Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory())/ 1024 / 1024);
-			String users = "{}";
+			String users = "[]";
 			String amountusers = String.valueOf(milkAdminInstance.getServer().getOnlinePlayers().length);
 			if ( milkAdminInstance.getServer().getOnlinePlayers().length > 0 ){
-				users = "{";
+				users = "[";
 				Player[] p = milkAdminInstance.getServer().getOnlinePlayers();
 				for (int i = 0; i < p.length; i++ ){
 					users = users + "\"" + p[i].getName()+ "\"";
@@ -209,7 +211,7 @@ public class WebServer extends Thread implements RTKListener{
 						users = users + ", ";
 					}
 				}
-				users = users + "}";
+				users = users + "]";
 			}
 			data = "{\"lastrestart\":\""+MilkAdmin.initTime+"\"," +
 					"\"version\":\""+version+"\"," +
@@ -404,14 +406,14 @@ public class WebServer extends Thread implements RTKListener{
 		load_settings();
 		try{
 			if ( WebServerMode == 0 ){
-				ServerSocket s = new ServerSocket(Port);
+				rootSocket = new ServerSocket(Port);
 				System.out.println("[milkAdmin] Listening on localhost:"+Port);
 				for (;;)
-					new WebServer(milkAdminInstance, s.accept());
+					new WebServer(milkAdminInstance, rootSocket.accept());
 			} else {
 				BufferedReader in = new BufferedReader(new InputStreamReader(WebServerSocket.getInputStream()));
 				try{
-					String l, g, url="", param="", json;
+					String l, g, url="", param="", json, htmlDir = "./plugins/milkAdmin/html";
 					while ( (l = in.readLine()).length() > 0 ){
 						if ( l.startsWith("GET") ){
 							g = (l.split(" "))[1];
@@ -445,22 +447,22 @@ public class WebServer extends Thread implements RTKListener{
 							}
 							else if (!noSaveLoggedIn.containsKey(WebServerSocket.getInetAddress().getCanonicalHostName()) || !noSaveLoggedIn.containsKey(WebServerSocket.getInetAddress().getHostAddress())){
 								if( url.equals("/") || url.equals("/index.html")){
-									readFileAsBinary("./milkAdmin/html/login.html");
+									readFileAsBinary(htmlDir+"/login.html");
 								}
 								else if( url.startsWith("/images/") || url.startsWith("/js/") || url.startsWith("/css/")){
-									readFileAsBinary("./milkAdmin/html" + url);
+									readFileAsBinary(htmlDir + url);
 								}
 								//OTHERWISE LOAD PAGES
 								else{
-									readFileAsBinary("./milkAdmin/html/login.html");
+									readFileAsBinary(htmlDir+"/login.html");
 								}
 							}else{
 								if(adminList.containsKey("admin")){
 									if( url.equals("/register.html")){
-										readFileAsBinary("./milkAdmin/html/register.html");
+										readFileAsBinary(htmlDir+"/register.html");
 									}
 									else if( url.startsWith("/images/") || url.startsWith("/js/") || url.startsWith("/css/")){
-										readFileAsBinary("./milkAdmin/html" + url);
+										readFileAsBinary(htmlDir + url);
 									}
 									else if ( url.startsWith("/server/account_create") ){
 										String username = getParam("username", param);
@@ -468,12 +470,12 @@ public class WebServer extends Thread implements RTKListener{
 			                        	if(username.length() > 0 && password.length() > 0){
 			                        		saveAdminList.setString(username, sha512me(password));
 			                        		saveAdminList.removeKey("admin");
-			                        		json = "ok:account-created";
+			                        		json = "ok:accountcreated";
 			                        	}else
-			                        		json = "error:bad-parameters";
+			                        		json = "error:badparameters";
 										print(json, "text/html");
 									}else{
-										readFileAsBinary("./milkAdmin/html/register.html");
+										readFileAsBinary(htmlDir+"/register.html");
 									}
 								}
 								//FINISHED LOGIN
@@ -485,9 +487,9 @@ public class WebServer extends Thread implements RTKListener{
 									String password = getParam("password", param);
 		                        	if(username.length() > 0 && password.length() > 0){
 		                        		saveAdminList.setString(username, sha512me(password));
-		                        		json = "ok:account-created";
+		                        		json = "ok:accountcreated";
 		                        	}else
-		                        		json = "error:bad-parameters";
+		                        		json = "error:badparameters";
 									print(json, "text/plain");
 								}
 								else if ( url.equals("/server/logout") ){
@@ -498,7 +500,7 @@ public class WebServer extends Thread implements RTKListener{
 								}
 								else if ( url.equals("/save") ){
 									consoleCommand("save-all");
-									json = "ok:world-saved";
+									json = "ok:worldsaved";
 									print(json, "text/plain");
 								}
 								else if ( url.startsWith("/server/say") ){
@@ -510,23 +512,23 @@ public class WebServer extends Thread implements RTKListener{
 										}else{
 											consoleCommand("say " + text);
 										}
-										json = "ok:message-sent";
+										json = "ok:messagesent";
 		                        	}else
-		                        		json = "error:message-empty";
+		                        		json = "error:messageempty";
 									print(json, "text/plain");
 								}
 								else if ( url.startsWith("/server/broadcast_message") ){
 									String text = getParam("message", param);
 		                        	if(text.length() > 0){
 										milkAdminInstance.getServer().broadcastMessage(text);
-										json = "ok:broadcasted-message";
+										json = "ok:broadcastedmessage";
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
 								else if ( url.equals("/stop") ){
-									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString("./milkAdmin/html/wait.html");
+									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString(htmlDir+"/wait.html");
 									print(json, "text/html");
 									try {
 										Thread.sleep(1000);
@@ -537,7 +539,7 @@ public class WebServer extends Thread implements RTKListener{
 								}
 								else if ( url.equals("/reload_server") ){
 									milkAdminInstance.getServer().reload();
-									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString("./milkAdmin/html/wait.html");
+									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString(htmlDir+"/wait.html");
 									print(json, "text/html");
 								}
 								else if ( url.equals("/restart_server") ){
@@ -546,11 +548,11 @@ public class WebServer extends Thread implements RTKListener{
 									}catch(IOException e){
 										debug("[milkAdmin] ERROR in restart_server: " + e.getMessage());
 									}
-									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString("./milkAdmin/html/wait.html");
+									json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/\">" + readFileAsString(htmlDir+"/wait.html");
 									print(json, "text/html");
 								}
 								else if ( url.equals("/force_stop") ){
-									json = "ok:force-stop";
+									json = "ok:forcestop";
 									print(json, "text/plain");
 									System.exit(1);
 								}
@@ -570,9 +572,9 @@ public class WebServer extends Thread implements RTKListener{
 									String plugin = getParam("plugin", param);
 		                        	if(plugin.length() > 0){
 										milkAdminInstance.getServer().getPluginManager().disablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(plugin));
-										json = "ok:plugin-disabled:_NAME_,"+plugin;
+										json = "ok:plugindisabled:_NAME_,"+plugin;
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -580,9 +582,9 @@ public class WebServer extends Thread implements RTKListener{
 									String plugin = getParam("plugin", param);
 		                        	if(plugin.length() > 0){
 										milkAdminInstance.getServer().getPluginManager().enablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(plugin));
-										json = "ok:plugin-enabled:_NAME_,"+plugin;
+										json = "ok:pluginenabled:_NAME_,"+plugin;
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -594,9 +596,9 @@ public class WebServer extends Thread implements RTKListener{
 									String value = getParam("value", param);
 		                        	if(property.length() > 0 && value.length() > 0){
 										BukkitProperties.setString(property, value);
-										json = "ok:edited-property";
+										json = "ok:editedproperty";
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 											
 									print(json, "text/plain");
@@ -606,13 +608,13 @@ public class WebServer extends Thread implements RTKListener{
 									DateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd_HH-mm-ss");
 									Date date = new Date();
 									String datez = dateFormat.format(date);
-									new File("backups").mkdir();
-									new File("backups/"+datez).mkdir();
+									new File("plugins/milkAdmin/backups").mkdir();
+									new File("plugins/milkAdmin/backups/"+datez).mkdir();
 									File srcFolder = new File(levelname);
-									File destFolder = new File("backups/" + datez + "/" + levelname);
+									File destFolder = new File("plugins/milkAdmin/backups/" + datez + "/" + levelname);
 									try{
 										copyFolder(srcFolder,destFolder);
-										json = "ok:world-backed-up";
+										json = "ok:worldbackedup";
 										print(json, "text/plain");
 									}catch(IOException e){
 										debug("[milkAdmin] ERROR in backup: " + e.getMessage());
@@ -622,19 +624,19 @@ public class WebServer extends Thread implements RTKListener{
 								else if( url.startsWith("/restore")){
 									String id = getParam("id", param);
 									if(id.length() > 0){
-										json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/server/restore?id="+id+"\">" + readFileAsString("./milkAdmin/html/wait.html");
+										json = "<html><head><meta HTTP-EQUIV=\"REFRESH\" content=\"20; url=/server/restore?id="+id+"\">" + readFileAsString(htmlDir+"/wait.html");
 										print(json, "text/html");
 									}else
-										readFileAsBinary("./milkAdmin/html/index.html");
+										readFileAsBinary(htmlDir+"/index.html");
 									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER);
 								}
 								else if( url.startsWith("/delete")){
 									String id = getParam("id", param);
 									if(id.length() > 0){
-										deleteDirectory(new File("backups/"+id));
-										json = "ok:delete-backup";
+										deleteDirectory(new File("plugins/milkAdmin/backups/"+id));
+										json = "ok:deletebackup";
 									}else
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									print(json, "text/plain");
 								}
 								else if( url.equals("/info/list_backups.json")){
@@ -679,12 +681,12 @@ public class WebServer extends Thread implements RTKListener{
 											if(cause.length() > 0)
 												kickString = cause;
 											p.kickPlayer(kickString);
-											json = "ok:kick-player:_NAME_,"+user;
+											json = "ok:kickplayer:_NAME_,"+user;
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -696,12 +698,12 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											p.getInventory().addItem(new ItemStack(Material.getMaterial(Integer.valueOf(item)), Integer.valueOf(amount)));
-											json = "ok:items-given:_NAME_,"+user+",_AMOUNT_,"+amount+",_ITEM_,"+Material.getMaterial(Integer.valueOf(item));
+											json = "ok:itemsgiven:_NAME_,"+user+",_AMOUNT_,"+amount+",_ITEM_,"+Material.getMaterial(Integer.valueOf(item));
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										} 
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 
 									print(json, "text/plain");
@@ -714,12 +716,12 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											p.getInventory().removeItem(new ItemStack(Material.getMaterial(Integer.valueOf(item)), Integer.valueOf(amount)));
-											json = "ok:items-removed:_NAME_,"+user+",_AMOUNT_,"+amount+",_ITEM_,"+Material.getMaterial(Integer.valueOf(item));
+											json = "ok:itemsremoved:_NAME_,"+user+",_AMOUNT_,"+amount+",_ITEM_,"+Material.getMaterial(Integer.valueOf(item));
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -730,10 +732,10 @@ public class WebServer extends Thread implements RTKListener{
 										if(p != null && p.isOnline()){
 											json = "ok:"+String.valueOf(p.getHealth());
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -748,21 +750,21 @@ public class WebServer extends Thread implements RTKListener{
 												if(health >= 0 && health <=20){
 													p.setHealth(health);
 													if(health == 0){
-														json = "ok:player-killed:_NAME_,"+user;
+														json = "ok:playerkilled:_NAME_,"+user;
 													}else{
-														json = "ok:health-changed:_NAME_,"+user+",_AMOUNT_,"+amount;
+														json = "ok:healthchanged:_NAME_,"+user+",_AMOUNT_,"+amount;
 													}
 												}else{
-													json = "error:bad-parameters";
+													json = "error:badparameters";
 												}
 											}catch(NumberFormatException err){
-												json = "error:bad-parameters";
+												json = "error:badparameters";
 											}
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -781,9 +783,9 @@ public class WebServer extends Thread implements RTKListener{
 											banListName.setString(user, banstring);
 										}
 										banListName.save();
-										json = "ok:player-banned:_NAME_,"+user;
+										json = "ok:playerbanned:_NAME_,"+user;
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -802,9 +804,9 @@ public class WebServer extends Thread implements RTKListener{
 											banListIp.setString(ip, banstring);
 										}
 										banListIp.save();
-										json = "ok:ip-banned:_IP_,"+ip;
+										json = "ok:ipbanned:_IP_,"+ip;
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -814,12 +816,12 @@ public class WebServer extends Thread implements RTKListener{
 										if(banListName.keyExists(user)){
 											banListName.removeKey(user);
 											banListName.save();
-											json = "ok:player-unbanned:_NAME_,"+user;
+											json = "ok:playerunbanned:_NAME_,"+user;
 										}else{
-											json = "error:player-not-banned";
+											json = "error:playernotbanned";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -829,12 +831,12 @@ public class WebServer extends Thread implements RTKListener{
 										if(banListIp.keyExists(ip)){
 											banListIp.removeKey(ip);
 											banListIp.save();
-											json = "ok:ip-unbanned:_IP_,"+ip;
+											json = "ok:ipunbanned:_IP_,"+ip;
 										}else{
-											json = "error:ip-not-banned";
+											json = "error:ipnotbanned";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -844,12 +846,12 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											p.shootArrow();
-											json = "ok:arrow-shooted";
+											json = "ok:arrowshooted";
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -862,12 +864,12 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											p.throwSnowball();
-											json = "ok:throw-snowball";
+											json = "ok:throwsnowball";
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -877,12 +879,12 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											p.throwEgg();
-											json = "ok:throw-egg";
+											json = "ok:throwegg";
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -893,12 +895,12 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											p.setDisplayName(name);
-											json = "ok:change-name:_OLD_,"+user+",_NEW_,"+name;
+											json = "ok:changename:_OLD_,"+user+",_NEW_,"+name;
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -910,12 +912,12 @@ public class WebServer extends Thread implements RTKListener{
 										Player p2 = milkAdminInstance.getServer().getPlayer(touser);
 										if(p != null && p2!= null && p.isOnline() && p2.isOnline()){
 											p.teleport(p2);
-											json = "ok:player-teleported";
+											json = "ok:playerteleported";
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -928,12 +930,12 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											p.teleport(new Location(p.getWorld(), Integer.valueOf(x), Integer.valueOf(y), Integer.valueOf(z)));
-											json = "ok:player-teleported";
+											json = "ok:playerteleported";
 										}else{
-											json = "error:player-not-connected";
+											json = "error:playernotconnected";
 										}
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -946,7 +948,7 @@ public class WebServer extends Thread implements RTKListener{
 										else
 											json = "ok:false";
 									}else{
-										json = "error:bad-parameters";
+										json = "error:badparameters";
 									}
 									print(json, "text/plain");
 								}
@@ -958,21 +960,21 @@ public class WebServer extends Thread implements RTKListener{
 											String ip_port = String.valueOf(p.getAddress()).split("/")[1];
 											json = "{\"status\":\"ok\",\"ip\":\""+ip_port.split(":")[0]+"\",\"port\":\""+ip_port.split(":")[1]+"\"}";
 										}else{
-											json = "{\"status\":\"error\", \"error\":\"player-not-connected\"}";
+											json = "{\"status\":\"error\", \"error\":\"playernotconnected\"}";
 										}
 									}else{
-										json = "{\"status\":\"error\", \"error\":\"bad-parameters\"}";
+										json = "{\"status\":\"error\", \"error\":\"badparameters\"}";
 									}
 									print(json, "application/json");
 								}
 								else if( url.equals("/") || url.equals("/index.html")){
-									readFileAsBinary("./milkAdmin/html/index.html");
+									readFileAsBinary(htmlDir+"/index.html");
 								}
 								else if( url.startsWith("/images/") || url.startsWith("/js/") || url.startsWith("/css/")){
-									readFileAsBinary("./milkAdmin/html" + url);
+									readFileAsBinary(htmlDir + url);
 								}
 								else
-									readFileAsBinary("./milkAdmin/html/index.html");
+									readFileAsBinary(htmlDir+"/index.html");
 							}
 						}
 					}
@@ -983,5 +985,8 @@ public class WebServer extends Thread implements RTKListener{
 		} catch (IOException e){
 			debug("[milkAdmin] ERROR in ServerInitialize: " + e.getMessage());
 		}
+	}
+	public void stopServer()throws IOException{
+		rootSocket.close();
 	}
 }

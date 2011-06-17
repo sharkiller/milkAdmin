@@ -14,12 +14,15 @@ import org.bukkit.util.config.Configuration;
 import com.bukkit.sharkiller.milkAdmin.McRKit.RTKInterface;
 import com.bukkit.sharkiller.milkAdmin.McRKit.RTKInterfaceException;
 import com.bukkit.sharkiller.milkAdmin.McRKit.RTKListener;
+import com.bukkit.sharkiller.milkAdmin.WebServer;
 
 public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKListener{
 	public static String initTime = "";
 	private final MilkAdminPlayerListener playerListener = new MilkAdminPlayerListener(this);
 	RTKInterface api = null;
-	Configuration Settings = new Configuration(new File("milkAdmin/settings.yml"));
+	String PluginDir = "plugins/milkAdmin";
+	Configuration Settings = new Configuration(new File(PluginDir+"/settings.yml"));
+	private WebServer server = null;
 
 	public MilkAdmin(org.bukkit.plugin.PluginLoader pluginLoader, org.bukkit.Server serverInstance, org.bukkit.plugin.PluginDescriptionFile descFile, java.io.File folder, java.io.File pluginFile, java.lang.ClassLoader cLoader) {
 
@@ -27,37 +30,58 @@ public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKL
 	public MilkAdmin() {
 
 	}
-	public void setup() {
+	public boolean setup() {
 		try{
-			new File("milkAdmin").mkdir();
-			new File("milkAdmin", "banlistname.ini").createNewFile();
-			new File("milkAdmin", "banlistip.ini").createNewFile();
-			new File("milkAdmin", "settings.yml").createNewFile();
+			if(!new File(PluginDir).exists()){
+				System.err.println("[milkAdmin] milkAdmin folder not found. Wrong installation!");
+				return false;
+			}
+			if(!new File(PluginDir+"/html").exists()){
+				System.err.println("[milkAdmin] html folder not found. Wrong installation!");
+				return false;
+			}
+			new File(PluginDir, "banlistip.ini").createNewFile();
+			new File(PluginDir, "banlistname.ini").createNewFile();
+			if(!new File(PluginDir, "admins.ini").exists()){
+				System.err.println("[milkAdmin] admins.ini not found.");
+				new File(PluginDir, "admins.ini").createNewFile();
+				PropertiesFile Admin = new PropertiesFile(PluginDir+"/admins.ini");
+				Admin.load();
+				Admin.setString("admin", "c7ad44cbad762a5da0a452f9e854fdc1e0e7a52a38015f23f3eab1d80b931dd472634dfac71cd34ebc35d16ab7fb8a90c81f975113d6c7538dc69dd8de9077ec");
+				System.out.println("[milkAdmin] Default admins.ini created successfully.");
+			}
+			if(!new File(PluginDir, "settings.yml").exists()){
+				new File(PluginDir, "settings.yml").createNewFile();
+				System.err.println("[milkAdmin] settings.yml not found. Using default settings.");
+			}
 		} catch (IOException ex) {
-			System.out.println("[milkAdmin] Error: Could not create milkAdmin files.");
+			System.err.println("[milkAdmin] Could not create milkAdmin files.");
+			return false;
 		}
 		eraseLoggedIn();
 		try{
 			Settings.load();
 			String username = Settings.getString("RTK.Username", "user");
 			String password = Settings.getString("RTK.Password", "pass");
-			int port = Settings.getInt("RTK.Port", 25561);
+			int port = Settings.getInt("RTK.Port", 25000);
 			api = RTKInterface.createRTKInterface(port,"localhost",username,password);
 		}catch(RTKInterfaceException e){
 			e.printStackTrace();
+			return false;
 		}
 		api.registerRTKListener(this);
+		return true;
 	}
 
 	public void onRTKStringReceived(String s){
-		System.out.println("[milkAdmin] From wrapper: "+s);
+		System.out.println("[milkAdmin] From RTK: "+s);
 	}
 
 	public void eraseLoggedIn(){
-		File myFile = new File("milkAdmin/loggedin.ini");
+		File myFile = new File(PluginDir+"/loggedin.ini");
 		myFile.delete();
 		try{
-			new File("milkAdmin/loggedin.ini").createNewFile();
+			new File(PluginDir+"/loggedin.ini").createNewFile();
 		} catch (IOException ex) {
 			System.out.println("Could not create milkAdmin files!");
 		}
@@ -69,18 +93,30 @@ public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKL
 	    SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 	    initTime = sdf.format(cal.getTime());
 		Logger logger = Logger.getLogger("Minecraft");
-		setup();
-		PluginManager pm = getServer().getPluginManager();
-		pm.registerEvent(Event.Type.PLAYER_JOIN, playerListener, Priority.High, this);
+		boolean init = setup();
+		if(init){
+			PluginManager pm = getServer().getPluginManager();
+			pm.registerEvent(Event.Type.PLAYER_JOIN, playerListener, Priority.High, this);
 
-		PluginDescriptionFile pdfFile = this.getDescription();
-		System.out.println("[milkAdmin] v"+pdfFile.getVersion()+" is enabled!" );
-		System.out.println("[milkAdmin] Developed by: "+pdfFile.getAuthors());
-		new WebServer(this);
+			PluginDescriptionFile pdfFile = this.getDescription();
+			System.out.println("[milkAdmin] v"+pdfFile.getVersion()+" is enabled!" );
+			System.out.println("[milkAdmin] Developed by: "+pdfFile.getAuthors());
+			server = new WebServer(this);
+		}else{
+			System.err.println("[milkAdmin] Not initialized!");
+		}
 	}
 
 	public void onDisable() {
-		System.out.println("[milkAdmin] Disabled!");
+		try{
+			if(server != null){
+				server.stopServer();
+				System.out.println("[milkAdmin] WebServer closed successfully!");
+				System.out.println("[milkAdmin] Disabled!");
+			}
+		}catch(IOException e){
+			System.err.println("[milkAdmin] Error closing WebServer");
+			e.printStackTrace();
+		}
 	}
-
 }
