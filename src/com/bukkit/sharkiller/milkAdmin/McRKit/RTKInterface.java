@@ -1,29 +1,36 @@
 package com.bukkit.sharkiller.milkAdmin.McRKit;
-//RTK UDP API, Revision 4
+
+//RTK UDP API, Revision 5
 //(C) Nick Stones-Havas 2011
-//Revision date: February 18th, 2011
+//Revision date: June 23rd, 2011
 /*-------------------
-
-CHANGELOG
-
---Revision 4--
-* Added support for hold and start API functions
-
---Revision 3--
-* Added enum javadoc descriptions
-
---Revision 2--
-* Added Javadoc comments
-* Made getReference() static.
-
---Revision 1--
-* Made the singleton reference have private accesss.
-* Added an accessor method to retrieve the singleton reference
-
---Revision 0--
-* Initial release
-
--------------------*/
+ 
+ CHANGELOG
+ 
+ --Revision 6--
+ * Added support for usernames/passwords with mixed case
+ 
+ --Revision 5--
+ * Added support for restart reschedules
+ 
+ --Revision 4--
+ * Added support for hold and start API functions
+ 
+ --Revision 3--
+ * Added enum javadoc descriptions
+ 
+ --Revision 2--
+ * Added Javadoc comments
+ * Made getReference() static.
+ 
+ --Revision 1--
+ * Made the singleton reference have private accesss.
+ * Added an accessor method to retrieve the singleton reference
+ 
+ --Revision 0--
+ * Initial release
+ 
+ -------------------*/
 
 import java.net.InetAddress;
 import java.net.DatagramSocket;
@@ -36,11 +43,11 @@ import java.util.LinkedList;
 
 
 /**
-* The <em>RTKInterface</em> handles all of the UDP API calls to the RemoteToolkit Minecraft wrapper.
-* 
-* @author <a href="mailto:nick@drdanick.com">Nick Stones-Havas</a>
-* @version 2, 09/02/2011
-*/
+ * The <em>RTKInterface</em> handles all of the UDP API calls to the RemoteToolkit Minecraft wrapper.
+ * 
+ * @author <a href="mailto:nick@drdanick.com">Nick Stones-Havas</a>
+ * @version 2, 09/02/2011
+ */
 public class RTKInterface{
 	//singleton reference
 	private static RTKInterface singleton = null;
@@ -95,17 +102,23 @@ public class RTKInterface{
 		HOLD_SERVER,
 		
 		/**
-		 * Starts a held server
+		 * Unholds and starts a held server
 		 */
-		START_SERVER
+		UNHOLD_SERVER,
+		
+		/**
+		 * Reschedules the next restart.
+		 * NOTE: The rescheduled restart time String is a required parameter and must be supplied when calling <code>executeCommand</code>.
+		 * @see #executeCommand
+		 */
+		RESCHEDULE_RESTART
 	}
 	
 	private RTKInterface(int port, String host, String user, String password){
 		this.port=port;
 		this.host=host;
-		singleton=this;
-		this.user=user.toLowerCase();
-		this.password=password.toLowerCase();
+		this.user=user;
+		this.password=password;
 		listeners = new LinkedList<RTKListener>();
 	}
 	/**
@@ -118,7 +131,7 @@ public class RTKInterface{
 	 */
 	public static RTKInterface createRTKInterface(int port,String host,String user,String password)throws RTKInterfaceException{
 		if(singleton==null){
-			return new RTKInterface(port,host,user,password);
+			return (singleton=new RTKInterface(port,host,user,password));
 		}else{
 			throw new RTKInterfaceException("RTKInterface already instantiated.");
 		}
@@ -154,9 +167,10 @@ public class RTKInterface{
 	/**
 	 * Executes an api function.
 	 * @param type The type of wrapper function to perform.
+	 * @param commandParameter used to specify extra parameters used by some CommandTypes.
 	 * @throws IOException
 	 */
-	public void executeCommand(CommandType type)throws IOException{
+	public void executeCommand(CommandType type, String commandParameter)throws IOException, RTKInterfaceException{
 		String packet = null;
 		String suffix = ":"+user+":"+password;
 		if(type==CommandType.RESTART)
@@ -173,8 +187,14 @@ public class RTKInterface{
 			packet = "enable"+suffix;
 		else if(type==CommandType.HOLD_SERVER)
 			packet = "hold"+suffix;
-		else if(type==CommandType.START_SERVER)
-			packet = "start"+suffix;
+		else if(type==CommandType.UNHOLD_SERVER)
+			packet = "unhold"+suffix;
+		else if(type==CommandType.RESCHEDULE_RESTART){
+			if(commandParameter==null || commandParameter.trim().equals(""))
+				throw new RTKInterfaceException("Illegal command parameter specified");
+			packet = "reschedule:"+commandParameter+suffix;
+		}else
+			throw new RTKInterfaceException("Illegal command type specified");
 		dispatchUDPPacket(packet,host,port);
 	}
 	

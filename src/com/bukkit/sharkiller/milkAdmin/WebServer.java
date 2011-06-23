@@ -535,7 +535,7 @@ public class WebServer extends Thread implements RTKListener{
 									} catch (InterruptedException e) {
 										debug("[milkAdmin] ERROR in Stop: " + e.getMessage());
 									}
-									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER);
+									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
 								}
 								else if ( url.equals("/reload_server") ){
 									milkAdminInstance.getServer().reload();
@@ -544,7 +544,7 @@ public class WebServer extends Thread implements RTKListener{
 								}
 								else if ( url.equals("/restart_server") ){
 									try{
-										milkAdminInstance.api.executeCommand(RTKInterface.CommandType.RESTART);
+										milkAdminInstance.api.executeCommand(RTKInterface.CommandType.RESTART,null);
 									}catch(IOException e){
 										debug("[milkAdmin] ERROR in restart_server: " + e.getMessage());
 									}
@@ -628,7 +628,7 @@ public class WebServer extends Thread implements RTKListener{
 										print(json, "text/html");
 									}else
 										readFileAsBinary(htmlDir+"/index.html");
-									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER);
+									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
 								}
 								else if( url.startsWith("/delete")){
 									String id = getParam("id", param);

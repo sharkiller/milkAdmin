@@ -13,9 +13,8 @@ import org.bukkit.util.config.Configuration;
  */
 public class MilkAdminPlayerListener extends PlayerListener {
 	//private final milkBukkit plugin;
-	Configuration Settings = new Configuration(new File("milkAdmin/settings.yml"));
-	PropertiesFile banListName = new PropertiesFile("milkAdmin/banlistname.ini");
-	PropertiesFile banListIp = new PropertiesFile("milkAdmin/banlistip.ini");
+	String PluginDir = "plugins/milkAdmin/";
+	Configuration Settings = new Configuration(new File(PluginDir+"settings.yml"));
 	String BannedString = Settings.getString("Strings.Banned", "Banned from this server");
 
 	public MilkAdminPlayerListener(MilkAdmin instance) {
@@ -25,6 +24,8 @@ public class MilkAdminPlayerListener extends PlayerListener {
 
 	@Override
 	public void onPlayerJoin(PlayerJoinEvent event) {
+		PropertiesFile banListName = new PropertiesFile(PluginDir+"banlistname.ini");
+		PropertiesFile banListIp = new PropertiesFile(PluginDir+"banlistip.ini");
 		try {
 			banListName.load();
 			banListIp.load();

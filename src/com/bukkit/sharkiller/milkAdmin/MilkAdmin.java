@@ -3,7 +3,6 @@ package com.bukkit.sharkiller.milkAdmin;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.logging.Logger;
 
 import org.bukkit.event.Event;
 import org.bukkit.event.Event.Priority;
@@ -17,10 +16,12 @@ import com.bukkit.sharkiller.milkAdmin.McRKit.RTKListener;
 import com.bukkit.sharkiller.milkAdmin.WebServer;
 
 public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKListener{
-	public static String initTime = "";
 	private final MilkAdminPlayerListener playerListener = new MilkAdminPlayerListener(this);
+	public static String initTime = "";
 	RTKInterface api = null;
 	String PluginDir = "plugins/milkAdmin";
+	String userRTK, passRTK;
+	int portRTK;
 	Configuration Settings = new Configuration(new File(PluginDir+"/settings.yml"));
 	private WebServer server = null;
 
@@ -61,10 +62,10 @@ public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKL
 		eraseLoggedIn();
 		try{
 			Settings.load();
-			String username = Settings.getString("RTK.Username", "user");
-			String password = Settings.getString("RTK.Password", "pass");
-			int port = Settings.getInt("RTK.Port", 25000);
-			api = RTKInterface.createRTKInterface(port,"localhost",username,password);
+			userRTK = Settings.getString("RTK.Username", "user");
+			passRTK = Settings.getString("RTK.Password", "pass");
+			portRTK = Settings.getInt("RTK.Port", 25000);
+			api = RTKInterface.createRTKInterface(portRTK,"localhost",userRTK,passRTK);
 		}catch(RTKInterfaceException e){
 			e.printStackTrace();
 			return false;
@@ -74,7 +75,10 @@ public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKL
 	}
 
 	public void onRTKStringReceived(String s){
-		System.out.println("[milkAdmin] From RTK: "+s);
+		if(s.equals("RTK_TIMEOUT")){
+			System.out.println("[milkAdmin] RTK not response to the user '"+userRTK+"' in the port '"+portRTK+"' bad configuration?");
+		} else
+			System.out.println("[milkAdmin] From RTK: "+s);
 	}
 
 	public void eraseLoggedIn(){
@@ -87,12 +91,10 @@ public class MilkAdmin extends org.bukkit.plugin.java.JavaPlugin implements RTKL
 		}
 	}
 
-	@SuppressWarnings("unused")
 	public void onEnable() {
 		Calendar cal = Calendar.getInstance();
 	    SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 	    initTime = sdf.format(cal.getTime());
-		Logger logger = Logger.getLogger("Minecraft");
 		boolean init = setup();
 		if(init){
 			PluginManager pm = getServer().getPluginManager();
