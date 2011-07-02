@@ -1,9 +1,12 @@
 package com.bukkit.sharkiller.milkAdmin;
 
 //imports
-import java.lang.reflect.Field;
+
+import net.minecraft.server.EntityFireball;
+import net.minecraft.server.EntityLiving;
 import net.minecraft.server.MinecraftServer;
 
+import java.lang.reflect.Field;
 import java.net.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -18,11 +21,16 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.craftbukkit.CraftServer;
+import org.bukkit.craftbukkit.CraftWorld;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.*;
+import org.bukkit.util.Vector;
 import org.bukkit.util.config.*;
 
-import com.bukkit.sharkiller.milkAdmin.McRKit.*;
+import com.bukkit.sharkiller.milkAdmin.RTK.*;
+import com.bukkit.sharkiller.milkAdmin.Utils.NoSavePropertiesFile;
+import com.bukkit.sharkiller.milkAdmin.Utils.PropertiesFile;
 
 public class WebServer extends Thread implements RTKListener{
 	int WebServerMode;
@@ -32,16 +40,18 @@ public class WebServer extends Thread implements RTKListener{
 	static Logger log = Logger.getLogger("Minecraft");
 	String Lang;
 	boolean Debug;
+	static InetAddress Ip = null;
 	int Port;
 	int consoleLines;
 	String BannedString;
 	String KickedString;
 	String levelname;
 	String PluginDir = "plugins/milkAdmin/";
+	String BanListDir;
 	Configuration Settings = new Configuration(new File(PluginDir+"settings.yml"));
 	PropertiesFile BukkitProperties = new PropertiesFile("server.properties");
-	PropertiesFile banListName = new PropertiesFile(PluginDir+"banlistname.ini");
-	PropertiesFile banListIp = new PropertiesFile(PluginDir+"banlistip.ini");
+	PropertiesFile banListName;
+	PropertiesFile banListIp;
 	String bannedplayers = "banned-players.txt";
 	ArrayList<String> bannedPlayers = new ArrayList<String>();
 	String bannedips = "banned-ips.txt";
@@ -161,7 +171,8 @@ public class WebServer extends Thread implements RTKListener{
 		String ip = BukkitProperties.getString("server-ip", "");
 		String port = BukkitProperties.getString("server-port", "25565");
 		String maxplayers = BukkitProperties.getString("max-players", "10");
-		String spawnradio = BukkitProperties.getString("spawn-protection", "16");
+		//String spawnradio = BukkitProperties.getString("spawn-protection", "16");
+		String spawnradio = "update!";
 		String levelname = BukkitProperties.getString("level-name", "world");
 		String levelseed = BukkitProperties.getString("level-seed", "");
 		boolean nether = BukkitProperties.getBoolean("hellworld", false);
@@ -200,6 +211,7 @@ public class WebServer extends Thread implements RTKListener{
 			String maxmem = String.valueOf(Runtime.getRuntime().maxMemory() / 1024 / 1024);
 			String freemem = String.valueOf(Runtime.getRuntime().freeMemory() / 1024 / 1024);
 			String usedmem = String.valueOf((Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory())/ 1024 / 1024);
+			//String cpuload = String.valueOf(ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage());
 			String users = "[]";
 			String amountusers = String.valueOf(milkAdminInstance.getServer().getOnlinePlayers().length);
 			if ( milkAdminInstance.getServer().getOnlinePlayers().length > 0 ){
@@ -220,6 +232,7 @@ public class WebServer extends Thread implements RTKListener{
 					"\"maxmem\":\""+maxmem+"\"," +
 					"\"freemem\":\""+freemem+"\"," +
 					"\"usedmem\":\""+usedmem+"\"," +
+					//"\"cpuload\":\""+cpuload+"\"," +
 					"\"amountusers\":\""+amountusers+"\"," +
 					"\"users\":"+users+"," +
 					"\"properties\":"+infoProperties()+"}";
@@ -376,7 +389,18 @@ public class WebServer extends Thread implements RTKListener{
 
 	public void load_settings(){
 		Settings.load();
+		BanListDir = Settings.getString("Settings.BanListDir", "plugins/milkAdmin");
+		banListName = new PropertiesFile(BanListDir+"/banlistname.ini");
+		banListIp = new PropertiesFile(BanListDir+"/banlistip.ini");
 		Debug = Settings.getBoolean("Settings.Debug", false);
+		String ipaux = Settings.getString("Settings.Ip", null);
+		if(ipaux != null && !ipaux.equals("")){
+			try {
+				Ip = InetAddress.getByName(ipaux);
+			} catch (UnknownHostException e) {
+				debug("[milkAdmin] ERROR UnknownHostException - Ip: "+ ipaux + " - Message: " + e.getMessage());
+			}
+		}
 		Port = Settings.getInt("Settings.Port", 64712);
 		consoleLines = Settings.getInt("Settings.ConsoleLines", 13);
 		BannedString = Settings.getString("Strings.Banned", "Banned from this server");
@@ -402,13 +426,43 @@ public class WebServer extends Thread implements RTKListener{
 			return "";
 	}
 	
+	/**
+	* launchFireball
+	* @param player
+	*
+	* Creates all required objects for definition and manifestation of an EntityFireball.
+	* © Matthew Uecker
+	*/
+	public void launchFireball(Player player)
+	{
+		CraftPlayer craftPlayer = (CraftPlayer) player;
+		EntityLiving playerEntity = craftPlayer.getHandle();
+
+		Vector lookat = player.getLocation().getDirection().multiply(10);
+
+		Location loc = player.getLocation();
+
+		EntityFireball fball = new EntityFireball(((CraftWorld) player.getWorld()).getHandle(), playerEntity, lookat.getX(), lookat.getY(), lookat.getZ());
+
+		fball.locX = loc.getX() + (lookat.getX()/5.0) + 0.25;
+		fball.locY = loc.getY() + (player.getEyeHeight()/2.0) + 0.5;
+		fball.locZ = loc.getZ() + (lookat.getZ()/5.0);
+
+		((CraftWorld) player.getWorld()).getHandle().addEntity(fball);
+	}
+	
 	public void run(){
 		load_settings();
 		try{
 			if ( WebServerMode == 0 ){
-				rootSocket = new ServerSocket(Port);
-				System.out.println("[milkAdmin] Listening on localhost:"+Port);
-				for (;;)
+				if(Ip == null){
+					rootSocket = new ServerSocket(Port);
+					System.out.println("[milkAdmin] WebServer listening on port "+Port);
+				}else{
+					rootSocket = new ServerSocket(Port, 50, Ip);
+					System.out.println("[milkAdmin] WebServer listening on "+Ip+":"+Port);
+				}
+				while(!rootSocket.isClosed())
 					new WebServer(milkAdminInstance, rootSocket.accept());
 			} else {
 				BufferedReader in = new BufferedReader(new InputStreamReader(WebServerSocket.getInputStream()));
@@ -603,15 +657,31 @@ public class WebServer extends Thread implements RTKListener{
 											
 									print(json, "text/plain");
 								}
+								else if( url.startsWith("/page/change_lang")) {
+									String lang = getParam("lang", param);
+		                        	if(lang.length() > 0){
+		                        		if(new File(htmlDir+"/js/lang/"+lang, "default.js").exists()){
+		                        			File src = new File(htmlDir+"/js/lang/"+lang, "default.js");
+		                        			File dest = new File(htmlDir+"/js/lang", "default.js");
+		                        			copyFolder(src, dest);
+		                        			json = "ok:langchanged";
+		                        		}else
+		                        			json = "error:langnotfound";
+									}else{
+										json = "error:badparameters";
+									}
+											
+									print(json, "text/plain");
+								}
 								else if( url.equals("/backup")){
 									consoleCommand("save-all");
 									DateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd_HH-mm-ss");
 									Date date = new Date();
 									String datez = dateFormat.format(date);
-									new File("plugins/milkAdmin/backups").mkdir();
-									new File("plugins/milkAdmin/backups/"+datez).mkdir();
+									new File(PluginDir+"backups").mkdir();
+									new File(PluginDir+"backups/"+datez).mkdir();
 									File srcFolder = new File(levelname);
-									File destFolder = new File("plugins/milkAdmin/backups/" + datez + "/" + levelname);
+									File destFolder = new File(PluginDir+"backups/" + datez + "/" + levelname);
 									try{
 										copyFolder(srcFolder,destFolder);
 										json = "ok:worldbackedup";
@@ -633,7 +703,7 @@ public class WebServer extends Thread implements RTKListener{
 								else if( url.startsWith("/delete")){
 									String id = getParam("id", param);
 									if(id.length() > 0){
-										deleteDirectory(new File("plugins/milkAdmin/backups/"+id));
+										deleteDirectory(new File(PluginDir+"backups/"+id));
 										json = "ok:deletebackup";
 									}else
 										json = "error:badparameters";
@@ -840,12 +910,17 @@ public class WebServer extends Thread implements RTKListener{
 									}
 									print(json, "text/plain");
 								}
+								else if ( url.equals("/player/banlist.json") ){
+									listBans();
+								}
 								else if ( url.startsWith("/player/shoot_arrow") ){
 									String user = getParam("user", param);
-									if(user.length() > 0){
+									int amount = Integer.parseInt(getParam("amount", param));
+									if(user.length() > 0 && amount > 0 && amount < 1000){
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
-											p.shootArrow();
+											for(int i=0;i<amount;i++)
+												p.shootArrow();
 											json = "ok:arrowshooted";
 										}else{
 											json = "error:playernotconnected";
@@ -855,15 +930,31 @@ public class WebServer extends Thread implements RTKListener{
 									}
 									print(json, "text/plain");
 								}
-								else if ( url.equals("/player/banlist.json") ){
-									listBans();
+								else if ( url.startsWith("/player/shoot_fireball") ){
+									String user = getParam("user", param);
+									int amount = Integer.parseInt(getParam("amount", param));
+									if(user.length() > 0 && amount > 0 && amount < 1000){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											for(int i=0;i<amount;i++)
+												launchFireball(p);
+											json = "ok:fireballshooted";
+										}else{
+											json = "error:playernotconnected";
+										}
+									}else{
+										json = "error:badparameters";
+									}
+									print(json, "text/plain");
 								}
 								else if ( url.startsWith("/player/throw_snowball") ){
 									String user = getParam("user", param);
-									if(user.length() > 0){
+									int amount = Integer.parseInt(getParam("amount", param));
+									if(user.length() > 0 && amount > 0 && amount < 1000){
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
-											p.throwSnowball();
+											for(int i=0;i<amount;i++)
+												p.throwSnowball();
 											json = "ok:throwsnowball";
 										}else{
 											json = "error:playernotconnected";
@@ -875,10 +966,12 @@ public class WebServer extends Thread implements RTKListener{
 								}
 								else if ( url.startsWith("/player/throw_egg") ){
 									String user = getParam("user", param);
-									if(user.length() > 0){
+									int amount = Integer.parseInt(getParam("amount", param));
+									if(user.length() > 0 && amount > 0 && amount < 1000){
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
-											p.throwEgg();
+											for(int i=0;i<amount;i++)
+												p.throwEgg();
 											json = "ok:throwegg";
 										}else{
 											json = "error:playernotconnected";
@@ -987,6 +1080,7 @@ public class WebServer extends Thread implements RTKListener{
 		}
 	}
 	public void stopServer()throws IOException{
-		rootSocket.close();
+		if(rootSocket != null)
+			rootSocket.close();
 	}
 }
