@@ -23,9 +23,9 @@
 
   <dependencies>
     <dependency>
-       <groupId>org.bukkit</groupId>
-          <artifactId>bukkit</artifactId>
-          <version>1.2.3-R0.2</version>
+        <groupId>org.bukkit</groupId>
+        <artifactId>bukkit</artifactId>
+        <version>1.2.3-R0.2</version>
     </dependency>
     <dependency>
         <groupId>org.bukkit</groupId>
