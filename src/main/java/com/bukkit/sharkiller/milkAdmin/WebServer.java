@@ -1,7 +1,5 @@
 package com.bukkit.sharkiller.milkAdmin;
 
-//imports
-
 import net.minecraft.server.EntityFireball;
 import net.minecraft.server.EntityLiving;
 import net.minecraft.server.MinecraftServer;
@@ -26,11 +24,12 @@ import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.*;
 import org.bukkit.util.Vector;
-import org.bukkit.util.config.*;
 
-import com.bukkit.sharkiller.milkAdmin.RTK.*;
-import com.bukkit.sharkiller.milkAdmin.Utils.NoSavePropertiesFile;
-import com.bukkit.sharkiller.milkAdmin.Utils.PropertiesFile;
+import com.bukkit.sharkiller.milkAdmin.rtk.*;
+import com.bukkit.sharkiller.milkAdmin.util.Configuration;
+import com.bukkit.sharkiller.milkAdmin.util.NoSavePropertiesFile;
+import com.bukkit.sharkiller.milkAdmin.util.PropertiesFile;
+
 
 /**
  * Simple <code>WebServer</code> All-In-One.
@@ -65,7 +64,6 @@ public class WebServer extends Thread implements RTKListener{
 	ArrayList<String> bannedIps = new ArrayList<String>();
 	NoSavePropertiesFile adminList = new NoSavePropertiesFile(PluginDir+"admins.ini");
 	PropertiesFile saveAdminList = new PropertiesFile(PluginDir+"admins.ini");
-	//NoSavePropertiesFile noSaveLoggedIn = new NoSavePropertiesFile(PluginDir+"loggedin.ini");
 	PropertiesFile LoggedIn = new PropertiesFile(PluginDir+"loggedin.ini");
 
 	/**
@@ -209,6 +207,27 @@ public class WebServer extends Thread implements RTKListener{
 			debug("[milkAdmin] ERROR in readConsole(): " + e.getMessage());
 		}
 		return console;	
+	}
+	
+	public String lastConsoleLine(){
+		String console = ""; 
+		String lastline = "";
+		try{
+			File f = new File("server.log");
+			RandomAccessFile randomFile = new RandomAccessFile(f, "r");
+			long fileLength = randomFile.length();
+			long startPosition = fileLength - 200;
+			if(startPosition < 0)
+				startPosition = 0;
+			randomFile.seek(startPosition);
+			while( ( lastline = randomFile.readLine() ) != null ){
+				console = lastline;
+			}
+		}
+		catch (Exception e) {
+			debug("[milkAdmin] ERROR in lastConsoleLine(): " + e.getMessage());
+		}
+		return console;
 	}
 	
 	public String infoProperties() throws IOException{
@@ -579,6 +598,7 @@ public class WebServer extends Thread implements RTKListener{
 	* @param player Player who shoot the fireball.
 	* @author Matthew Uecker
 	*/
+	@Deprecated
 	public void launchFireball(Player player)
 	{
 		CraftPlayer craftPlayer = (CraftPlayer) player;
@@ -809,8 +829,12 @@ public class WebServer extends Thread implements RTKListener{
 								else if ( url.startsWith("/server/disable_plugin") ){
 									String plugin = getParam("plugin", param);
 		                        	if(plugin.length() > 0){
-										milkAdminInstance.getServer().getPluginManager().disablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(plugin));
-										json = "ok:plugindisabled:_NAME_,"+plugin;
+		                        		if(milkAdminInstance.getServer().getPluginManager().isPluginEnabled(plugin)){
+		                        			milkAdminInstance.getServer().getPluginManager().disablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(plugin));
+		                        			json = "ok:plugindisabled:_NAME_,"+plugin;
+		                        		}else{
+		                        			json = "ok:pluginnotenabled";
+		                        		}
 									}else{
 										json = "error:badparameters";
 									}
@@ -821,6 +845,55 @@ public class WebServer extends Thread implements RTKListener{
 		                        	if(plugin.length() > 0){
 										milkAdminInstance.getServer().getPluginManager().enablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(plugin));
 										json = "ok:pluginenabled:_NAME_,"+plugin;
+									}else{
+										json = "error:badparameters";
+									}
+									print(json, "text/plain");
+								}
+								else if ( url.startsWith("/server/reload_plugin") ){
+									String plugin = getParam("plugin", param);
+		                        	if(plugin.length() > 0){
+		                        		if(milkAdminInstance.getServer().getPluginManager().isPluginEnabled(plugin)){
+		                        			milkAdminInstance.getServer().getPluginManager().disablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(plugin));
+		                        			milkAdminInstance.getServer().getPluginManager().enablePlugin(milkAdminInstance.getServer().getPluginManager().getPlugin(plugin));
+		                        			json = "ok:pluginreloaded:_NAME_,"+plugin;
+		                        		}else{
+		                        			json = "ok:pluginnotenabled";
+		                        		}
+									}else{
+										json = "error:badparameters";
+									}
+									print(json, "text/plain");
+								}
+								else if ( url.startsWith("/server/load_plugin") ){
+									String plugin = getParam("plugin", param);
+		                        	if(plugin.length() > 0){
+		                                File pluginFile = new File(new File("plugins"), plugin + ".jar");
+		                                if (pluginFile.isFile()) {
+		                                    try {
+		                                        Plugin newPlugin = milkAdminInstance.getServer().getPluginManager().loadPlugin(pluginFile);
+		                                        if (newPlugin != null) {
+		                                            String pluginName = newPlugin.getDescription().getName();
+		                                            milkAdminInstance.getServer().getPluginManager().enablePlugin(newPlugin);
+		                                            if (newPlugin.isEnabled()) {
+		                                                System.out.println("[milkAdmin] Plugin loaded and enabled [" + pluginName + "]");
+		                                                json = "ok:pluginloaded:_NAME_,"+pluginName;
+		                                            } else {
+		                                                json = "error:pluginloadfailed";
+		                                            }
+		                                        } else {
+		                                        	json = "error:pluginloadfailed";
+		                                        }
+		                                    } catch (UnknownDependencyException ex) {
+		                                        json = "error:pluginnotplugin";
+		                                    } catch (InvalidPluginException ex) {
+		                                        json = "error:pluginnotplugin";
+		                                    } catch (InvalidDescriptionException ex) {
+		                                        json = "error:plugininvalid";
+		                                    }
+		                                } else {
+		                                    json = "error:pluginnotexist";
+		                                }
 									}else{
 										json = "error:badparameters";
 									}
@@ -859,7 +932,7 @@ public class WebServer extends Thread implements RTKListener{
 								}
 								else if( url.equals("/backup")){
 									Worlds.load();
-									Worlds.setHeader("# milkAdmin - INTERNAL USE DO NOT MODIFY");
+									//Worlds.setHeader("# milkAdmin - INTERNAL USE DO NOT MODIFY");
 									List<World> worlds = milkAdminInstance.getServer().getWorlds();
 									List<String> wstr = new ArrayList<String>();
 									if ( worlds.size() > 0 ){
@@ -932,6 +1005,38 @@ public class WebServer extends Thread implements RTKListener{
 								/////////////
 								else if ( url.equals("/info/data.json") ){
 									print(infoData(), "application/json");
+								}
+								/////////////////////////
+								//CUSTOM WHITELIST AREA
+								/////////////////////////
+								/*else if ( url.equals("/customwl/get.json") ){
+									List<String> players = loadWhitelist();
+									String wl = "[";
+									for(String p: players){
+										if(wl.length() > 1)
+											wl+= ",";
+										wl+= "\""+p+"\"";
+									}
+									wl+= "]";
+									print(wl, "application/json");
+								}*/
+								else if ( url.equals("/customwl/add.php") ){
+									String user = getParam("user", param);
+									if(user.length() > 0){
+										json = milkAdminInstance.WL.addDefaultPlayer(user);
+									}else{
+										json = "Usuario no válido";
+									}
+									print(json, "text/plain");
+								}
+								else if ( url.equals("/customwl/remove.php") ){
+									String user = getParam("user", param);
+									if(user.length() > 0){
+										json = milkAdminInstance.WL.removePlayer(user);
+									}else{
+										json = "Usuario no válido";
+									}
+									print(json, "text/plain");
 								}
 								//////////////////
 								//WHITELIST AREA
@@ -1155,7 +1260,7 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											for(int i=0;i<amount;i++)
-												p.shootArrow();
+												p.launchProjectile(org.bukkit.entity.Arrow.class);
 											json = "ok:arrowshooted";
 										}else{
 											json = "error:playernotconnected";
@@ -1172,7 +1277,8 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											for(int i=0;i<amount;i++)
-												launchFireball(p);
+												p.launchProjectile(org.bukkit.entity.Fireball.class);
+											
 											json = "ok:fireballshooted";
 										}else{
 											json = "error:playernotconnected";
@@ -1189,7 +1295,8 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											for(int i=0;i<amount;i++)
-												p.throwSnowball();
+												p.launchProjectile(org.bukkit.entity.Snowball.class);
+											
 											json = "ok:throwsnowball";
 										}else{
 											json = "error:playernotconnected";
@@ -1206,7 +1313,26 @@ public class WebServer extends Thread implements RTKListener{
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
 											for(int i=0;i<amount;i++)
-												p.throwEgg();
+												p.launchProjectile(org.bukkit.entity.Egg.class);
+											
+											json = "ok:throwegg";
+										}else{
+											json = "error:playernotconnected";
+										}
+									}else{
+										json = "error:badparameters";
+									}
+									print(json, "text/plain");
+								}
+								else if ( url.startsWith("/player/throw_bomb") ){
+									String user = getParam("user", param);
+									int amount = Integer.parseInt(getParam("amount", param));
+									if(user.length() > 0 && amount > 0 && amount < 1000){
+										Player p = milkAdminInstance.getServer().getPlayer(user);
+										if(p != null && p.isOnline()){
+											for(int i=0;i<amount;i++)
+												p.launchProjectile(org.bukkit.entity.SmallFireball.class);
+											
 											json = "ok:throwegg";
 										}else{
 											json = "error:playernotconnected";

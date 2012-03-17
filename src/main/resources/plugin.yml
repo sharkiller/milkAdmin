@@ -1,0 +1,11 @@
+name: milkAdmin
+main: com.bukkit.sharkiller.milkAdmin.MilkAdmin
+author: Sharkiller
+version: 1.8-03.17
+description: WebAdministrator of Minecraft Servers for Bukkit.
+softdepend: [Vault]
+commands:
+  milkadmin:
+    description: milkAdmin commands.
+    usage: /<command>
+    aliases: [ma]

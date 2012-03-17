@@ -1,0 +1,73 @@
+####################
+## Text colouring ##
+####################
+# Black =     &0    # Gray =        &8 
+# Navy =      &1    # DarkPurple =  &9
+# Green =     &2    # LightGreen =  &a
+# Blue =      &3    # LightBlue =   &b
+# Red =       &4    # Rose =        &c
+# Purple =    &5    # LightPurple = &d
+# Gold =      &6    # Yellow =      &e
+# LightGray = &7    # White =       &f
+
+#####################
+## Common Settings ##
+#####################
+Settings:
+    # Debug info in console
+    Debug: false
+    # IP for Listening. ONLY remove '#' if necessary.
+    #Ip: '127.0.0.1'
+    # Port to access the WebUI
+    Port: 25000
+    # Console lines to show in WebUI
+    ConsoleLines: 20
+    # Directory of ban files. Default: 'plugins/milkAdmin'
+    # Relative to Server Root or Absolute
+    BanListDir: 'plugins/milkAdmin'
+    # Path of scripts, images and style. Leave empty for local linking. (Not recommended)
+    # Upload the html folder wherever you want and write without last slash.
+    # Eg. 'http://www.example.com/milkAdmin/html'
+    # Default: 'http://www.sharkale.com.ar/milkAdmin/1.4'
+    ExternalUrl: 'http://www.sharkale.com.ar/milkAdmin/1.4'
+#####################
+## Backup Settings ##
+#####################
+Backup:
+    # Directory of backup folder
+    # Relative to Server Root or Absolute
+    Path: 'Backups [milkAdmin]'
+    # true: Backup all worlds | false: Only main world
+    AllWorlds: true
+    # true: Backup complete plugin folder | false: Ignore plugin folder.
+    Plugins: true
+########################
+## Whitelist Settings ##
+########################
+Whitelist:
+    # Use the milkAdmin custom whitelist.
+    # Please check that minecraft whitelist is deactivated.
+    Custom: false
+    # Alert ingame when a player is trying to join and is not in whitelist.
+    Alert: true
+    # Alert message. %s will be replaced by the player's name.
+    AlertMessage: '&6%s trying to join but is not in whitelist.'
+    # Kick message when a player is not in whitelist.
+    # %s will be replaced by the player's name.
+    KickMessage: 'You are not in whitelist. Register on the forum!'
+#################
+## String Data ##
+#################
+Strings:
+    # Default kick message
+    Kicked: 'Kicked from the server!'
+    # Default kick message
+    Banned: 'Banned from the server!'
+########################################
+## RemoteToolkit Data for the wrapper ##
+########################################
+RTK:
+    UsingRTK: false
+    Username: 'user'
+    Password: 'pass'
+    Port: 25561
