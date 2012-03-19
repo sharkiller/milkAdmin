@@ -207,13 +207,10 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
     	{
     		try {
     			if(args[0].equalsIgnoreCase("ayuda") || args[0].equalsIgnoreCase("?"))
-    				//auctionHelp((Player)sender);
     				sender.sendMessage("=D");
     			else if(args[0].equalsIgnoreCase("whitelist") || args[0].equalsIgnoreCase("wl"))
-    				//auctionStart((Player)sender, args);
     				whitelistProccess(sender, args);
     			else if(args[0].equalsIgnoreCase("ban") || args[0].equalsIgnoreCase("b"))
-    				//auctionBid((Player)sender, args);
     				sender.sendMessage("=D");
     			return true;
     		} catch(ArrayIndexOutOfBoundsException ex) {

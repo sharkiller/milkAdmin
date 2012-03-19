@@ -1,7 +1,7 @@
 name: milkAdmin
 main: com.bukkit.sharkiller.milkAdmin.MilkAdmin
 author: Sharkiller
-version: 1.8-03.17
+version: 1.8-03.19-dev
 description: WebAdministrator of Minecraft Servers for Bukkit.
 softdepend: [Vault]
 commands:

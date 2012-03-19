@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.bukkit.sharkiller</groupId>
   <artifactId>milkAdmin</artifactId>
-  <version>1.8-03.17</version>
+  <version>1.8-03.19-dev</version>
   <name>milkAdmin</name>
   <url>http://www.sectorgamer.com</url>
 
@@ -47,7 +47,6 @@
   </dependencies>
 
   <build>
-    <finalName>${project.name}</finalName>
     <resources>
       <resource>
         <targetPath>.</targetPath>
