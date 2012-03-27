@@ -25,11 +25,10 @@ Settings:
     # Directory of ban files. Default: 'plugins/milkAdmin'
     # Relative to Server Root or Absolute
     BanListDir: 'plugins/milkAdmin'
-    # Path of scripts, images and style. Leave empty for local linking. (Not recommended)
+    # Path of scripts, images and style. Leave empty for local linking.
     # Upload the html folder wherever you want and write without last slash.
     # Eg. 'http://www.example.com/milkAdmin/html'
-    # Default: 'http://www.sharkale.com.ar/milkAdmin/1.4'
-    ExternalUrl: 'http://www.sharkale.com.ar/milkAdmin/1.4'
+    ExternalUrl: ''
 #####################
 ## Backup Settings ##
 #####################

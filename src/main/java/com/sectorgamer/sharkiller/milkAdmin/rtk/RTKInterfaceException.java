@@ -1,7 +1,7 @@
 //RTK UDP API
 //(C) Nick Stones-Havas 2011
 //Revision date: February 1st, 2011
-package com.bukkit.sharkiller.milkAdmin.rtk;
+package com.sectorgamer.sharkiller.milkAdmin.rtk;
 
 /**
  * Thrown when an error pertaining to the RTKInterface is encountered.

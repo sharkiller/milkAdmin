@@ -1,4 +1,4 @@
-package com.bukkit.sharkiller.milkAdmin.objects;
+package com.sectorgamer.sharkiller.milkAdmin.objects;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -13,8 +13,9 @@ import java.util.List;
 
 
 
-import com.bukkit.sharkiller.milkAdmin.util.Configuration;
 import com.google.gson.*;
+import com.sectorgamer.sharkiller.milkAdmin.util.Configuration;
+import com.sectorgamer.sharkiller.milkAdmin.util.MilkAdminLog;
 
 /**
  * Handle milkAdmin White list system.
@@ -162,10 +163,14 @@ public class Whitelist {
 		List<String> def = loadDefaultWhitelist();
 		for(String player:def){
 			addDefaultPlayer(player);
-			System.out.println("Imported: "+player);
+			MilkAdminLog.info("Imported: "+player);
 		}
 		result = "ok";
 		return result;
+	}
+	
+	public String count(){
+		return String.valueOf(whitelist.getNodeList(null, null).size());
 	}
 	
 	private List<String> loadDefaultWhitelist() {
@@ -176,7 +181,7 @@ public class Whitelist {
 		try {
 			fin = new BufferedReader(new FileReader("white-list.txt"));
 		} catch (FileNotFoundException e) {
-			System.err.println("[milkAdmin] ERROR in loadDefaultWhitelist(): "+e.getMessage());
+			MilkAdminLog.warning("ERROR in loadDefaultWhitelist()", e);
 			return new ArrayList<String>();
 		}
 		try {
@@ -185,13 +190,13 @@ public class Whitelist {
 					players.add(line.trim());
 			
 		} catch (Exception e) {
-			System.err.println("[milkAdmin] ERROR in loadDefaultWhitelist(): "+e.getMessage());
+			MilkAdminLog.warning("ERROR in loadDefaultWhitelist()", e);
 			return new ArrayList<String>();
 		} finally {
 			try{
 				fin.close();
 			} catch (IOException e){
-				System.err.println("[milkAdmin] ERROR in loadDefaultWhitelist(): "+e.getMessage());
+				MilkAdminLog.warning("ERROR in loadDefaultWhitelist()", e);
 			}
 		}
 		return players;

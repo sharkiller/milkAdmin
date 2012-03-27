@@ -1,4 +1,4 @@
-package com.bukkit.sharkiller.milkAdmin;
+package com.sectorgamer.sharkiller.milkAdmin;
 
 import net.minecraft.server.EntityFireball;
 import net.minecraft.server.EntityLiving;
@@ -25,10 +25,11 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.*;
 import org.bukkit.util.Vector;
 
-import com.bukkit.sharkiller.milkAdmin.rtk.*;
-import com.bukkit.sharkiller.milkAdmin.util.Configuration;
-import com.bukkit.sharkiller.milkAdmin.util.NoSavePropertiesFile;
-import com.bukkit.sharkiller.milkAdmin.util.PropertiesFile;
+import com.sectorgamer.sharkiller.milkAdmin.rtk.*;
+import com.sectorgamer.sharkiller.milkAdmin.util.Configuration;
+import com.sectorgamer.sharkiller.milkAdmin.util.MilkAdminLog;
+import com.sectorgamer.sharkiller.milkAdmin.util.NoSavePropertiesFile;
+import com.sectorgamer.sharkiller.milkAdmin.util.PropertiesFile;
 
 
 /**
@@ -92,7 +93,7 @@ public class WebServer extends Thread implements RTKListener{
 	
 	public void debug(String text){
 		if(Debug)
-			System.out.println(text);
+			MilkAdminLog.debug(text);
 	}
 
 	public String readFileAsString(String filePath)
@@ -109,7 +110,7 @@ public class WebServer extends Thread implements RTKListener{
 			reader.close();
 		}
 		catch (Exception e) {
-			debug("[milkAdmin] ERROR in readFileAsString(): " + e.getMessage());
+			debug("ERROR in readFileAsString(): " + e.getMessage());
 		}
 		return fileData.toString();
 	}
@@ -164,7 +165,7 @@ public class WebServer extends Thread implements RTKListener{
 			}
 		}
 		catch (Exception e) {
-			debug("[milkAdmin] ERROR in readFileAsBinary(): " + e.getMessage());
+			debug("ERROR in readFileAsBinary(): " + e.getMessage());
 		}
 	}
 
@@ -204,7 +205,7 @@ public class WebServer extends Thread implements RTKListener{
 			}
 		}
 		catch (Exception e) {
-			debug("[milkAdmin] ERROR in readConsole(): " + e.getMessage());
+			debug("ERROR in readConsole(): " + e.getMessage());
 		}
 		return console;	
 	}
@@ -225,7 +226,7 @@ public class WebServer extends Thread implements RTKListener{
 			}
 		}
 		catch (Exception e) {
-			debug("[milkAdmin] ERROR in lastConsoleLine(): " + e.getMessage());
+			debug("ERROR in lastConsoleLine(): " + e.getMessage());
 		}
 		return console;
 	}
@@ -290,7 +291,7 @@ public class WebServer extends Thread implements RTKListener{
 				totalspace = String.format("%.2f%n", ts).trim();
 				usedspace = String.format("%.2f%n", us).trim();
 			}catch(SecurityException e){
-				debug("[milkAdmin] Security Exception in Space Data");
+				debug("Security Exception in Space Data");
 			}
 			
 			String users = "[]";
@@ -323,7 +324,7 @@ public class WebServer extends Thread implements RTKListener{
 					"\"properties\":"+infoProperties()+"}";
 		}
 		catch (Exception e) {
-			debug("[milkAdmin] ERROR in infoData(): " + e.getMessage());
+			debug("ERROR in infoData(): " + e.getMessage());
 		}
 		return data;
 	}
@@ -345,7 +346,7 @@ public class WebServer extends Thread implements RTKListener{
 			}
 		}
 		catch (IOException e) {
-			debug("[milkAdmin] ERROR in readLine(): " + e.getMessage());
+			debug("ERROR in readLine(): " + e.getMessage());
 		} 
 	}
 	
@@ -357,7 +358,7 @@ public class WebServer extends Thread implements RTKListener{
 		try {
 			fin = new BufferedReader(new FileReader("white-list.txt"));
 		} catch (FileNotFoundException e) {
-			debug("[milkAdmin] ERROR in loadWhitelist(): "+e.getMessage());
+			debug("ERROR in loadWhitelist(): "+e.getMessage());
 			return new ArrayList<String>();
 		}
 		try {
@@ -366,13 +367,13 @@ public class WebServer extends Thread implements RTKListener{
 					players.add(line.trim());
 			
 		} catch (Exception e) {
-			debug("[milkAdmin] ERROR in loadWhitelist(): "+e.getMessage());
+			debug("ERROR in loadWhitelist(): "+e.getMessage());
 			return new ArrayList<String>();
 		} finally {
 			try{
 				fin.close();
 			} catch (IOException e){
-				debug("[milkAdmin] ERROR in loadWhitelist(): "+e.getMessage());
+				debug("ERROR in loadWhitelist(): "+e.getMessage());
 			}
 		}
 		return players;
@@ -388,7 +389,7 @@ public class WebServer extends Thread implements RTKListener{
 			writer.close();
 			return true;
 		} catch (Exception e) {
-			debug("[milkAdmin] ERROR in saveWhitelist(): "+e.getMessage());
+			debug("ERROR in saveWhitelist(): "+e.getMessage());
 			return false;
 		}
 	}
@@ -401,7 +402,7 @@ public class WebServer extends Thread implements RTKListener{
 			writer.flush();
 			writer.close();
 		} catch (IOException e) {
-			debug("[milkAdmin] ERROR in saveWhitelist(): "+e.getMessage());
+			debug("ERROR in saveWhitelist(): "+e.getMessage());
 		}
 	}
 	
@@ -411,7 +412,7 @@ public class WebServer extends Thread implements RTKListener{
 		Iterator<Map.Entry<String, String>> i;
 		Map.Entry<String, String> e;
 		try {
-			debug("[milkAdmin] Writing listbans.");
+			debug("Writing listbans.");
 			// names
 			Map<String,String> banNames = banListName.returnMap();
 			i = banNames.entrySet().iterator();
@@ -433,9 +434,9 @@ public class WebServer extends Thread implements RTKListener{
 			}
 			listban = listban + "]}]";
 		} catch (Exception err) {
-			debug("[milkAdmin] ERROR in listBans(): " + err.getMessage());
+			debug("ERROR in listBans(): " + err.getMessage());
 		}
-		debug("[milkAdmin] Banlist - Sending JSON lenght: "+listban.length());
+		debug("Banlist - Sending JSON lenght: "+listban.length());
 		print(listban, "application/json");
 	}
 
@@ -448,7 +449,7 @@ public class WebServer extends Thread implements RTKListener{
 			}
 
 			if(!src.exists()){
-				System.out.println("[milkAdmin] Directory does not exist.");
+				MilkAdminLog.info("Directory does not exist.");
 				return;
 			}
 			String files[] = src.list();
@@ -515,7 +516,7 @@ public class WebServer extends Thread implements RTKListener{
 			message = out;
 
 		} catch (NoSuchAlgorithmException e) {
-			debug("[milkAdmin] ERROR in sha512me(): " + e.getMessage());
+			debug("ERROR in sha512me(): " + e.getMessage());
 		}
 		return message;
 	}
@@ -533,7 +534,7 @@ public class WebServer extends Thread implements RTKListener{
 			out.flush();
 			out.close();
 		} catch (Exception e) { 
-			debug("[milkAdmin] ERROR in print(): " + e.getMessage());
+			debug("ERROR in print(): " + e.getMessage());
 		}
 	}
 	
@@ -547,7 +548,7 @@ public class WebServer extends Thread implements RTKListener{
 			out.flush();
 			out.close();
 		} catch (Exception e) { 
-			debug("[milkAdmin] ERROR in httperror(): " + e.getMessage());
+			debug("ERROR in httperror(): " + e.getMessage());
 		}
 	}
 
@@ -565,7 +566,7 @@ public class WebServer extends Thread implements RTKListener{
 			try {
 				Ip = InetAddress.getByName(ipaux);
 			} catch (UnknownHostException e) {
-				debug("[milkAdmin] ERROR UnknownHostException - Ip: "+ ipaux + " - Message: " + e.getMessage());
+				debug("ERROR UnknownHostException - Ip: "+ ipaux + " - Message: " + e.getMessage());
 			}
 		}
 		Port = Settings.getInt("Settings.Port", 64712);
@@ -586,7 +587,7 @@ public class WebServer extends Thread implements RTKListener{
 				if(param != "password") debug(" - getParam: "+param+" - Value: "+resdec);
 				return resdec;
 			}catch (UnsupportedEncodingException e){
-				debug("[milkAdmin] ERROR in getParam(): " + e.getMessage());
+				debug("ERROR in getParam(): " + e.getMessage());
 				return "";
 			}
 		}else
@@ -623,10 +624,10 @@ public class WebServer extends Thread implements RTKListener{
 			if ( WebServerMode == 0 ){
 				if(Ip == null){
 					rootSocket = new ServerSocket(Port);
-					System.out.println("[milkAdmin] WebServer listening on port "+Port);
+					MilkAdminLog.info("WebServer listening on port "+Port);
 				}else{
 					rootSocket = new ServerSocket(Port, 50, Ip);
-					System.out.println("[milkAdmin] WebServer listening on "+Ip+":"+Port);
+					MilkAdminLog.info("WebServer listening on "+Ip+":"+Port);
 				}
 				while(!rootSocket.isClosed()){
 					Socket requestSocket = rootSocket.accept();
@@ -650,7 +651,7 @@ public class WebServer extends Thread implements RTKListener{
 								param = result.group(2);
 							}
 							String HostAddress = WebServerSocket.getInetAddress().getHostAddress();
-							debug("[milkAdmin] "+HostAddress+" - "+url);
+							debug(HostAddress+" - "+url);
 							urlDebug = url;
 							debug(" - ContainsKey: "+String.valueOf(LoggedIn.containsKey(HostAddress)) + " - keyExists: "+String.valueOf(LoggedIn.keyExists(HostAddress)));
 							if ( url.startsWith("/ping") ){
@@ -789,7 +790,7 @@ public class WebServer extends Thread implements RTKListener{
 									try {
 										Thread.sleep(1000);
 									} catch (InterruptedException e) {
-										debug("[milkAdmin] ERROR in Stop: " + e.getMessage());
+										debug("ERROR in Stop: " + e.getMessage());
 									}
 									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
 								}
@@ -803,7 +804,7 @@ public class WebServer extends Thread implements RTKListener{
 									try{
 										milkAdminInstance.api.executeCommand(RTKInterface.CommandType.RESTART,null);
 									}catch(IOException e){
-										debug("[milkAdmin] ERROR in restart_server: " + e.getMessage());
+										debug("ERROR in restart_server: " + e.getMessage());
 									}
 									json = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\"><html xmlns=\"http://www.w3.org/1999/xhtml\">";
 									json += "<head><script type=\"text/javascript\">tourl = './';</script>" + readFileAsString(htmlDir+"/wait.html");
@@ -876,7 +877,7 @@ public class WebServer extends Thread implements RTKListener{
 		                                            String pluginName = newPlugin.getDescription().getName();
 		                                            milkAdminInstance.getServer().getPluginManager().enablePlugin(newPlugin);
 		                                            if (newPlugin.isEnabled()) {
-		                                                System.out.println("[milkAdmin] Plugin loaded and enabled [" + pluginName + "]");
+		                                                MilkAdminLog.info("Plugin loaded and enabled [" + pluginName + "]");
 		                                                json = "ok:pluginloaded:_NAME_,"+pluginName;
 		                                            } else {
 		                                                json = "error:pluginloadfailed";
@@ -948,7 +949,7 @@ public class WebServer extends Thread implements RTKListener{
 									try {
 										Thread.sleep(1000);
 									} catch (InterruptedException e) {
-										debug("[milkAdmin] ERROR in backup: " + e.getMessage());
+										debug("ERROR in backup: " + e.getMessage());
 									}
 									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
 								}
@@ -964,7 +965,7 @@ public class WebServer extends Thread implements RTKListener{
 									try {
 										Thread.sleep(1000);
 									} catch (InterruptedException e) {
-										debug("[milkAdmin] ERROR in backup: " + e.getMessage());
+										debug("ERROR in backup: " + e.getMessage());
 									}
 									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
 								}
@@ -1443,13 +1444,13 @@ public class WebServer extends Thread implements RTKListener{
 					}
 				} catch (IOException e){
 				} catch (Exception e) {
-					debug("[milkAdmin] ERROR in ServerParser: " + e);
+					debug("ERROR in ServerParser: " + e);
 				}
 				timeDebug = System.currentTimeMillis() - timeDebug;
 				debug(" - Took " + timeDebug + "ms to process: " + urlDebug);
 			}
 		} catch (IOException e){
-			debug("[milkAdmin] ERROR in ServerInitialize: " + e.getMessage());
+			debug("ERROR in ServerInitialize: " + e.getMessage());
 		}
 	}
 	public void stopServer()throws IOException{

@@ -1,4 +1,4 @@
-package com.bukkit.sharkiller.milkAdmin.util;
+package com.sectorgamer.sharkiller.milkAdmin.util;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -6,7 +6,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Enumeration;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 public class FileMgmt {
@@ -78,5 +81,74 @@ public class FileMgmt {
 			}
 		}
 	}
+	
+	public static void unziptodir(File zipdir, File dest){
+		ZipFile zip;
+		try {
+			zip = new ZipFile(zipdir);
+			unzipFileIntoDirectory(zip, dest);
+		} catch (ZipException e) {
+			MilkAdminLog.warning("Failed to unzip!", e);
+		} catch (IOException e) {
+			MilkAdminLog.warning("Failed to unzip!", e);
+		}
+	}
+	
+	public static void unzipFileIntoDirectory(ZipFile zipFile, File jiniHomeParentDir) {
+		Enumeration<?> files = zipFile.entries();
+		File f = null;
+		FileOutputStream fos = null;
+
+		while (files.hasMoreElements()) {
+			try {
+				ZipEntry entry = (ZipEntry) files.nextElement();
+				InputStream eis = zipFile.getInputStream(entry);
+				byte[] buffer = new byte[1024];
+				int bytesRead = 0;
+
+				f = new File(jiniHomeParentDir.getAbsolutePath() + File.separator + entry.getName());
+
+				if (entry.isDirectory()) {
+					f.mkdirs();
+					continue;
+				} else {
+					f.getParentFile().mkdirs();
+					f.createNewFile();
+				}
+
+				fos = new FileOutputStream(f);
+
+				while ((bytesRead = eis.read(buffer)) != -1) {
+					fos.write(buffer, 0, bytesRead);
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+				continue;
+			} finally {
+				if (fos != null) {
+					try {
+						fos.close();
+					} catch (IOException e) {
+						// ignore
+					}
+				}
+			}
+		}
+	}
+	
+	public static void copy(InputStream in, File file) {
+        try {
+            OutputStream out = new FileOutputStream(file);
+            byte[] buf = new byte[1024];
+            int len;
+            while((len=in.read(buf))>0){
+                out.write(buf,0,len);
+            }
+            out.close();
+            in.close();
+        } catch (Exception e) {
+        	MilkAdminLog.severe("Failed to copy resource!", e);
+        }
+    }
 
 }

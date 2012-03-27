@@ -1,4 +1,4 @@
-package com.bukkit.sharkiller.milkAdmin.rtk;
+package com.sectorgamer.sharkiller.milkAdmin.rtk;
 
 //RTK UDP API, Revision 5
 //(C) Nick Stones-Havas 2011
@@ -40,6 +40,8 @@ import java.net.SocketTimeoutException;
 import java.io.IOException;
 
 import java.util.LinkedList;
+
+import com.sectorgamer.sharkiller.milkAdmin.util.MilkAdminLog;
 
 
 /**
@@ -215,8 +217,7 @@ public class RTKInterface{
 					}catch(SocketTimeoutException e){
 						despatchStringToListeners("RTK_TIMEOUT");
 					}catch(Exception e){
-						System.err.println("Unexpected Socket error: "+e);
-						e.printStackTrace();
+						MilkAdminLog.warning("Unexpected Socket error!", e);
 					}
 				}
 			}.start();

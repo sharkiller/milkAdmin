@@ -1,10 +1,9 @@
-package com.bukkit.sharkiller.milkAdmin;
+package com.sectorgamer.sharkiller.milkAdmin;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.logging.Logger;
 
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.command.Command;
@@ -16,21 +15,21 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import com.bukkit.sharkiller.milkAdmin.WebServer;
-import com.bukkit.sharkiller.milkAdmin.listeners.BanlistListener;
-import com.bukkit.sharkiller.milkAdmin.listeners.WhitelistListener;
-import com.bukkit.sharkiller.milkAdmin.objects.Banlist;
-import com.bukkit.sharkiller.milkAdmin.objects.Whitelist;
-import com.bukkit.sharkiller.milkAdmin.rtk.RTKInterface;
-import com.bukkit.sharkiller.milkAdmin.rtk.RTKInterfaceException;
-import com.bukkit.sharkiller.milkAdmin.rtk.RTKListener;
-import com.bukkit.sharkiller.milkAdmin.util.PropertiesFile;
+import com.sectorgamer.sharkiller.milkAdmin.WebServer;
+import com.sectorgamer.sharkiller.milkAdmin.listeners.BanlistListener;
+import com.sectorgamer.sharkiller.milkAdmin.listeners.WhitelistListener;
+import com.sectorgamer.sharkiller.milkAdmin.objects.Banlist;
+import com.sectorgamer.sharkiller.milkAdmin.objects.Whitelist;
+import com.sectorgamer.sharkiller.milkAdmin.rtk.RTKInterface;
+import com.sectorgamer.sharkiller.milkAdmin.rtk.RTKInterfaceException;
+import com.sectorgamer.sharkiller.milkAdmin.rtk.RTKListener;
+import com.sectorgamer.sharkiller.milkAdmin.util.FileMgmt;
+import com.sectorgamer.sharkiller.milkAdmin.util.MilkAdminLog;
+import com.sectorgamer.sharkiller.milkAdmin.util.PropertiesFile;
 
 import net.milkbowl.vault.permission.Permission;
 
-
 public class MilkAdmin extends JavaPlugin implements RTKListener{
-	static Logger Log = Logger.getLogger("Minecraft");
 	/* Ban list variables */
 	public Banlist BL;
 	public String BLDir;
@@ -45,12 +44,12 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 	/* RTK variables */
 	boolean UsingRTK;
 	RTKInterface api = null;
-	String PluginDir = "plugins/milkAdmin";
 	String userRTK, passRTK;
 	int portRTK;
 	/* Server variables */
+	String PluginDir = "plugins" + File.separator + "milkAdmin";
 	PropertiesFile ServerProperties = new PropertiesFile("server.properties");
-	YamlConfiguration Settings = YamlConfiguration.loadConfiguration(new File(PluginDir+"/settings.yml"));
+	YamlConfiguration Settings = null;
 	private WebServer server = null;
 	public static String initTime = "";
 	public boolean OnlineMode = true;
@@ -65,32 +64,43 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 	}
 	public boolean setup() {
 		try{
-			if(!new File(PluginDir).exists()){
-				Log.warning("[milkAdmin] milkAdmin folder not found. Wrong installation!");
-				return false;
-			}
-			if(!new File(PluginDir+"/html").exists()){
-				Log.warning("[milkAdmin] html folder not found. Wrong installation!");
-				return false;
-			}
-			if(!new File(PluginDir, "settings.yml").exists()){
-				new File(PluginDir, "settings.yml").createNewFile();
-				Log.warning("[milkAdmin] settings.yml not found. Using default settings.");
+			/* Check and Create plugin folder */
+			File dir = new File(PluginDir);
+			if(!dir.exists()){
+				dir.mkdirs();
 			}
 			
-			if(!new File(PluginDir, "admins.ini").exists()){
-				Log.warning("[milkAdmin] admins.ini not found.");
-				new File(PluginDir, "admins.ini").createNewFile();
-				PropertiesFile Admin = new PropertiesFile(PluginDir+"/admins.ini");
-				Admin.load();
-				Admin.setString("admin", "c7ad44cbad762a5da0a452f9e854fdc1e0e7a52a38015f23f3eab1d80b931dd472634dfac71cd34ebc35d16ab7fb8a90c81f975113d6c7538dc69dd8de9077ec");
-				Log.info("[milkAdmin] Default admins.ini created successfully.");
+			/* Check and Create web files folder */
+			dir = new File(PluginDir+ File.separator + "html");
+			if(!dir.exists()){
+				MilkAdminLog.info("Copying default HTML ZIP...");
+				dir = new File(PluginDir + File.separator + "milkAdmin.zip");
+				FileMgmt.copy(getResource("milkAdmin.zip"), dir);
+				MilkAdminLog.info("Done! Unzipping...");
+				FileMgmt.unziptodir(dir, new File(PluginDir));
+				MilkAdminLog.info("Done! Deleting zip.");
+				dir.delete();
 			}
-
+			
+			/* Check and Copy default config file */
+			dir = new File(PluginDir+ File.separator + "settings.yml");
+			if(!dir.exists()){
+				MilkAdminLog.info("Copying default settings.yml file.");
+				FileMgmt.copy(getResource("settings.yml"), dir);
+			}
+			/* Init config */
+			Settings = YamlConfiguration.loadConfiguration(dir);
+			
+			dir = new File(PluginDir+ File.separator + "admins.ini");
+			if(!dir.exists()){
+				MilkAdminLog.info("Copying default admins.ini file.");
+				FileMgmt.copy(getResource("admins.ini"), dir);
+			}
+			/* Init loggedin system */
 			eraseLoggedIn();
 
 			ServerProperties.load();
-			BLDir = Settings.getString("Settings.BanListDir", "plugins/milkAdmin");
+			BLDir = Settings.getString("Settings.BanListDir", "plugins" + File.separator + "milkAdmin");
 			BLMessage = Settings.getString("Strings.Banned", "Banned from the server!");
 			UsingRTK = Settings.getBoolean("RTK.UsingRTK", false);
 			WLCustom = Settings.getBoolean("Whitelist.Custom", false);
@@ -98,28 +108,22 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 			OnlineMode = ServerProperties.getBoolean("online-mode", true);
 			
 			if(MCWhitelist && WLCustom){
-				Log.warning("[milkAdmin] Minecraft Whitelist is actitivated. Shutting down custom Whitelist.");
+				MilkAdminLog.warning("Minecraft Whitelist is actitivated. Shutting down custom Whitelist.");
 				WLCustom = false;
 			}else if(WLCustom){
 				WL = new Whitelist();
 				WLAlert = Settings.getBoolean("Whitelist.Alert", true);
 				WLAlertMessage = Settings.getString("Whitelist.AlertMessage", "&6%s trying to join but is not in whitelist.");
 				WLKickMessage = Settings.getString("Whitelist.KickMessage", "You are not in whitelist. Register on the forum!");
-				Log.info("[milkAdmin] Using Custom Whitelist.");
+				MilkAdminLog.info("Using Custom Whitelist. ("+WL.count()+" users)");
 			}
 			
 			boolean perm = Settings.getBoolean("Settings.UsingPermissions", true);
 	    	if(perm)
 	    		enablePermissions();
 	    	else
-	    		Log.warning("[milkAdmin] No permission system enabled!");
+	    		MilkAdminLog.warning("No permission system enabled!");
 			
-			if(!new File(BLDir, "banlistip.ini").exists() || !new File(BLDir, "banlistname.ini").exists()){
-				Log.warning("[milkAdmin] Banlist files not found in '"+BLDir+"'. Creating...");
-				new File(BLDir, "banlistip.ini").createNewFile();
-				new File(BLDir, "banlistname.ini").createNewFile();
-				Log.info("[milkAdmin] Banlist files created successfully.");
-			}
 			BL = new Banlist(this);
 			
 			if(UsingRTK){
@@ -129,13 +133,13 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 				api = RTKInterface.createRTKInterface(portRTK,"localhost",userRTK,passRTK);
 				api.registerRTKListener(this);
 			}else{
-				Log.warning("[milkAdmin] Not using RTK. Required to Start/Stop/Restart/Backup.");
+				MilkAdminLog.warning("Not using RTK. Required to Start/Stop/Restart/Backup.");
 			}
 		}catch(IOException e){
-			Log.severe("[milkAdmin] Could not create milkAdmin files.");
+			MilkAdminLog.severe("Could not create milkAdmin files.");
 			return false;
 		}catch(RTKInterfaceException e){
-			Log.severe("[milkAdmin] Could not create RTK Interface.");
+			MilkAdminLog.severe("Could not create RTK Interface.");
 			return false;
 		}
 		return true;
@@ -146,67 +150,71 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
         if (permissionProvider != null) {
             Permissions = permissionProvider.getProvider();
             permissionsEnabled = true;
-		    Log.info("[milkAdmin] Permission support enabled!");
+            MilkAdminLog.info("Permission support enabled!");
         } else
-			Log.warning("[milkAdmin] Permission system not found!");
+        	MilkAdminLog.warning("Permission system not found!");
     }
 
 	public void onRTKStringReceived(String s){
 		if(s.equals("RTK_TIMEOUT")){
-			Log.warning("[milkAdmin] RTK not response to the user '"+userRTK+"' in the port '"+portRTK+"' bad configuration?");
+			MilkAdminLog.warning("RTK not response to the user '"+userRTK+"' in the port '"+portRTK+"' bad configuration?");
 		} else
-			Log.info("[milkAdmin] From RTK: "+s);
+			MilkAdminLog.info("From RTK: "+s);
 	}
 
 	public void eraseLoggedIn(){
-		File myFile = new File(PluginDir+"/loggedin.ini");
-		myFile.delete();
 		try{
-			new File(PluginDir+"/loggedin.ini").createNewFile();
+			File loggedin = new File(PluginDir+ File.separator + "loggedin.ini");
+			loggedin.delete();
+			loggedin.createNewFile();
 		} catch (IOException ex) {
-			Log.severe("[milkAdmin] Could not create milkAdmin files!");
+			MilkAdminLog.severe("Failed to create loggedin.ini file.", ex);
 		}
 	}
-
+	
+	@Override
 	public void onEnable() {
 		Calendar cal = Calendar.getInstance();
 	    SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
 	    initTime = sdf.format(cal.getTime());
+	    /* Init configs */
 		boolean init = setup();
 		if(init){
+			/* Init listeners */
 			PluginManager pm = getServer().getPluginManager();
 			pm.registerEvents(new BanlistListener(this), this);
 			if(WLCustom)
 				pm.registerEvents(new WhitelistListener(this), this);
-
+			/* Welcome messages */
 			PluginDescriptionFile pdfFile = this.getDescription();
-			Log.info("[milkAdmin] v"+pdfFile.getVersion()+" is enabled!" );
-			Log.info("[milkAdmin] Developed by: "+pdfFile.getAuthors());
+			MilkAdminLog.info("v"+pdfFile.getVersion()+" is enabled!" );
+			MilkAdminLog.info("Developed by: "+pdfFile.getAuthors());
+			/* Init webserver class */
 			server = new WebServer(this);
 		}else{
-			Log.severe("[milkAdmin] Failed to initialized!");
-		}
-	}
-
-	public void onDisable() {
-		try{
-			if(server != null)
-				server.stopServer();
-			Log.info("[milkAdmin] milkAdmin disabled successfully!");
-		}catch(IOException e){
-			Log.severe("[milkAdmin] Error closing WebServer");
-			e.printStackTrace();
+			MilkAdminLog.severe("Failed to initialized!");
 		}
 	}
 	
-    public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args)
-    {
+	@Override
+	public void onDisable() {
+		try{
+			/* Stop webserver */
+			if(server != null)
+				server.stopServer();
+			MilkAdminLog.info("milkAdmin disabled successfully!");
+		}catch(IOException e){
+			MilkAdminLog.severe("Error closing WebServer", e);
+		}
+	}
+	
+	
+    public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args) {
     	String commandName = cmd.getName();
     	
-    	if(commandName.equalsIgnoreCase("milkadmin"))
-    	{
+    	if(commandName.equalsIgnoreCase("milkadmin")) {
     		try {
-    			if(args[0].equalsIgnoreCase("ayuda") || args[0].equalsIgnoreCase("?"))
+    			if(args[0].equalsIgnoreCase("help") || args[0].equalsIgnoreCase("?"))
     				sender.sendMessage("=D");
     			else if(args[0].equalsIgnoreCase("whitelist") || args[0].equalsIgnoreCase("wl"))
     				whitelistProccess(sender, args);

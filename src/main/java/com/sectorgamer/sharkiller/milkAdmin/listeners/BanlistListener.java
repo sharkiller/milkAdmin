@@ -1,4 +1,4 @@
-package com.bukkit.sharkiller.milkAdmin.listeners;
+package com.sectorgamer.sharkiller.milkAdmin.listeners;
 
 
 import org.bukkit.event.Listener;
@@ -7,7 +7,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerLoginEvent.Result;
 
-import com.bukkit.sharkiller.milkAdmin.MilkAdmin;
+import com.sectorgamer.sharkiller.milkAdmin.MilkAdmin;
 
 /**
  * Handle events for Ban list System.

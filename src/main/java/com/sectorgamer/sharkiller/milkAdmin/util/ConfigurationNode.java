@@ -1,4 +1,4 @@
-package com.bukkit.sharkiller.milkAdmin.util;
+package com.sectorgamer.sharkiller.milkAdmin.util;
 
 
 import java.util.ArrayList;
