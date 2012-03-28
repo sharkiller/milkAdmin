@@ -11,9 +11,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
-
-
-import com.google.gson.*;
 import com.sectorgamer.sharkiller.milkAdmin.util.Configuration;
 import com.sectorgamer.sharkiller.milkAdmin.util.MilkAdminLog;
 
@@ -78,7 +75,7 @@ public class Whitelist {
 			String register = formatter.format(today);
 			result = setPlayer(player, true, null, null, register, null, null, null, null, null, null);
 		}else{
-			result = "El jugador ya existe y su cuenta está "+(whitelist.getBoolean(player+".enabled", false)?"activada":"desactivada");
+			result = "Player already exist and his account is "+(whitelist.getBoolean(player+".enabled", false)?"enabled":"disabled");
 		}
 		return result;
 	}
@@ -142,14 +139,6 @@ public class Whitelist {
 	public void reload(){
 		whitelist = new Configuration(file);
 		whitelist.load();
-	}
-	
-	public String getPlayer(String player){
-		String result;
-		Gson gson = new Gson();
-		
-		result = gson.toJson(player);
-		return result;
 	}
 	
 	public String exportDefault(){

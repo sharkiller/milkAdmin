@@ -1,10 +1,5 @@
 package com.sectorgamer.sharkiller.milkAdmin;
 
-import net.minecraft.server.EntityFireball;
-import net.minecraft.server.EntityLiving;
-import net.minecraft.server.MinecraftServer;
-
-import java.lang.reflect.Field;
 import java.net.*;
 import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
@@ -14,16 +9,13 @@ import java.util.logging.Logger;
 import java.io.*;
 import java.util.regex.*;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.craftbukkit.CraftServer;
-import org.bukkit.craftbukkit.CraftWorld;
-import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.*;
-import org.bukkit.util.Vector;
 
 import com.sectorgamer.sharkiller.milkAdmin.rtk.*;
 import com.sectorgamer.sharkiller.milkAdmin.util.Configuration;
@@ -173,19 +165,8 @@ public class WebServer extends Thread implements RTKListener{
 		debug("From wrapper: "+s);
 	}
 
-	// Add to main class
 	public void consoleCommand(String cmd){
-		CraftServer craftserver = (CraftServer)milkAdminInstance.getServer();
-		Field field;
-		try { field = CraftServer.class.getDeclaredField("console"); }
-		catch (NoSuchFieldException ex) {return; }
-		catch (SecurityException ex) {return; }
-		MinecraftServer mcs;
-		try { field.setAccessible(true); mcs = (MinecraftServer) field.get(craftserver); }
-		catch (IllegalArgumentException ex) {return; }
-		catch (IllegalAccessException ex) {return; }
-		if ( (!mcs.isStopped) && (MinecraftServer.isRunning(mcs)) )
-			mcs.issueCommand(cmd, mcs);
+		milkAdminInstance.getServer().dispatchCommand(Bukkit.getConsoleSender(), cmd);
 	}
 	
 	public String readConsole(){
@@ -592,30 +573,6 @@ public class WebServer extends Thread implements RTKListener{
 			}
 		}else
 			return "";
-	}
-	
-	/**
-	* Creates all required objects for definition and manifestation of an EntityFireball.
-	* @param player Player who shoot the fireball.
-	* @author Matthew Uecker
-	*/
-	@Deprecated
-	public void launchFireball(Player player)
-	{
-		CraftPlayer craftPlayer = (CraftPlayer) player;
-		EntityLiving playerEntity = craftPlayer.getHandle();
-
-		Vector lookat = player.getLocation().getDirection().multiply(10);
-
-		Location loc = player.getLocation();
-
-		EntityFireball fball = new EntityFireball(((CraftWorld) player.getWorld()).getHandle(), playerEntity, lookat.getX(), lookat.getY(), lookat.getZ());
-
-		fball.locX = loc.getX() + (lookat.getX()/5.0) + 0.25;
-		fball.locY = loc.getY() + (player.getEyeHeight()/2.0) + 0.5;
-		fball.locZ = loc.getZ() + (lookat.getZ()/5.0);
-
-		((CraftWorld) player.getWorld()).getHandle().addEntity(fball);
 	}
 	
 	public void run(){
@@ -1026,7 +983,7 @@ public class WebServer extends Thread implements RTKListener{
 									if(user.length() > 0){
 										json = milkAdminInstance.WL.addDefaultPlayer(user);
 									}else{
-										json = "Usuario no válido";
+										json = "Invalid User";
 									}
 									print(json, "text/plain");
 								}
@@ -1035,7 +992,7 @@ public class WebServer extends Thread implements RTKListener{
 									if(user.length() > 0){
 										json = milkAdminInstance.WL.removePlayer(user);
 									}else{
-										json = "Usuario no válido";
+										json = "Invalid User";
 									}
 									print(json, "text/plain");
 								}
