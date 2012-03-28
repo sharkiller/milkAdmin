@@ -29,6 +29,13 @@ public class Banlist {
 		}
 	}
 	
+	public String count(boolean nick) throws Exception{
+		if(nick)
+			return String.valueOf(banListName.returnMap().size());
+		else
+			return String.valueOf(banListIp.returnMap().size());
+	}
+	
 	/**
 	 * Check if player name or ip is in a banlist.
 	 * 

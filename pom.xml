@@ -19,6 +19,10 @@
       <id>spout-repo</id>
       <url>http://nexus.spout.org/content/groups/public</url>
     </repository>
+    <repository>
+      <id>sharkiller-repo</id>
+      <url>http://dl.dropbox.com/u/24869887/plublic/</url>
+    </repository>
   </repositories>
 
   <dependencies>
@@ -47,9 +51,7 @@
     <dependency>
         <groupId>com.drdanick</groupId>
         <artifactId>McRKit</artifactId>
-        <version>1.0.0</version>
-        <scope>system</scope>
-        <systemPath>${project.basedir}/lib/Minecraft_RKit.jar</systemPath>
+        <version>R10A13</version>
     </dependency>
   </dependencies>
 

@@ -44,9 +44,9 @@ public class Whitelist {
      * likes: 50
 	 *
 	 **/
-	static final String PluginDir = "plugins/milkAdmin/";
+	static final String PluginDir = "plugins" + File.separator + "milkAdmin";
 	private Configuration whitelist;
-	private File file = new File(PluginDir+"whitelist.yml");
+	private File file = new File(PluginDir + File.separator + "whitelist.yml");
 	
 	public Whitelist(){
 		whitelist = new Configuration(file);
@@ -62,6 +62,7 @@ public class Whitelist {
 		String result;
 		if(keyExists(player)){
 			whitelist.setProperty(player+".enabled", false);
+			whitelist.save();
 			result = "Jugador eliminado de la whitelist";
 		}else{
 			result = "El jugador no existe";
@@ -170,7 +171,7 @@ public class Whitelist {
 	}
 	
 	public String count(){
-		return String.valueOf(whitelist.getNodeList(null, null).size());
+		return String.valueOf(whitelist.getKeys(null).size());
 	}
 	
 	private List<String> loadDefaultWhitelist() {

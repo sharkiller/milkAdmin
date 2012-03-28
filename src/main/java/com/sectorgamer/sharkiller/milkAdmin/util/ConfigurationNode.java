@@ -1,6 +1,5 @@
 package com.sectorgamer.sharkiller.milkAdmin.util;
 
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,18 +26,18 @@ public class ConfigurationNode {
         Map<String, Object> node = root;
         
         for (int i = 0; i < parts.length; i++) {
-            Object o = node.get(parts[i]);
+            Object obj = node.get(parts[i]);
             
-            if (o == null) {
+            if (obj == null) {
                 return null;
             }
             
             if (i == parts.length - 1) {
-                return o;
+                return obj;
             }
             
             try {
-                node = (Map<String, Object>)o;
+                node = (Map<String, Object>)obj;
             } catch (ClassCastException e) {
                 return null;
             }
@@ -58,7 +57,7 @@ public class ConfigurationNode {
         Map<String, Object> node = root;
         
         for (int i = 0; i < parts.length; i++) {
-            Object o = node.get(parts[i]);
+            Object obj = node.get(parts[i]);
             
             // Found our target!
             if (i == parts.length - 1) {
@@ -66,13 +65,13 @@ public class ConfigurationNode {
                 return;
             }
             
-            if (o == null || !(o instanceof Map)) {
+            if (obj == null || !(obj instanceof Map)) {
                 // This will override existing configuration data!
-                o = new HashMap<String, Object>();
-                node.put(parts[i], o);
+            	obj = new HashMap<String, Object>();
+                node.put(parts[i], obj);
             }
             
-            node = (Map<String, Object>)o;
+            node = (Map<String, Object>)obj;
         }
     }
 
