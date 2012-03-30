@@ -83,6 +83,10 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 				FileMgmt.copy(getResource("settings.yml"), dir);
 			}
 			
+			/* Init configs */
+			Settings = YamlConfiguration.loadConfiguration(dir);
+			ServerProperties.load();
+			
 			dir = new File(PluginDir+ File.separator + "admins.ini");
 			if(!dir.exists()){
 				MilkAdminLog.info("Copying default admins.ini file.");
@@ -91,10 +95,6 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 			
 			/* Init loggedin system */
 			eraseLoggedIn();
-			
-			/* Init configs */
-			Settings = YamlConfiguration.loadConfiguration(dir);
-			ServerProperties.load();
 			
 			/* Get configs */
 			BLDir = Settings.getString("Settings.BanListDir", "plugins" + File.separator + "milkAdmin");

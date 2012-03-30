@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.sectorgamer.sharkiller</groupId>
   <artifactId>milkAdmin</artifactId>
-  <version>1.8-dev</version>
+  <version>1.8</version>
   <name>milkAdmin</name>
   <url>http://www.sectorgamer.com</url>
 
@@ -12,12 +12,12 @@
   
   <repositories>
     <repository>
-      <id>bukkit-repo</id>
-      <url>http://repo.bukkit.org/content/groups/public</url>
-    </repository>
-    <repository>
       <id>spout-repo</id>
       <url>http://nexus.spout.org/content/groups/public</url>
+    </repository>
+    <repository>
+      <id>bukkit-repo</id>
+      <url>http://repo.bukkit.org/content/groups/public</url>
     </repository>
     <repository>
       <id>sharkiller-repo</id>
@@ -29,7 +29,7 @@
     <dependency>
         <groupId>org.bukkit</groupId>
         <artifactId>bukkit</artifactId>
-        <version>1.2.4-R0.1-SNAPSHOT</version>
+        <version>1.2.4-R1.0</version>
     </dependency>
     <dependency>
         <groupId>net.milkbowl</groupId>
@@ -82,4 +82,13 @@
       </plugin>
     </plugins>
   </build>
+  <scm>
+  	<url>https://github.com/sharkiller/milkAdmin</url>
+  	<developerConnection>scm:git:git@github.com:sharkiller/milkAdmin.git</developerConnection>
+  	<connection>scm:git:git://github.com/sharkiller/milkAdmin.git</connection>
+  </scm>
+  <ciManagement>
+  	<system>jenkins</system>
+  	<url>http://mc.sectorgamer.com:8080/</url>
+  </ciManagement>
 </project>
