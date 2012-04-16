@@ -26,7 +26,7 @@ public class WhitelistListener implements Listener {
 	 * Handle events for White list System.
 	 * @author Sharkiller
 	 */
-	@EventHandler(priority = EventPriority.LOWEST)
+	@EventHandler(priority = EventPriority.HIGH)
 	public void whitelistCheckLogin(PlayerLoginEvent event) {
 		if (!event.getResult().equals(Result.ALLOWED))
 			return;

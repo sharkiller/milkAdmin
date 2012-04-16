@@ -17,16 +17,10 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import com.sectorgamer.sharkiller.milkAdmin.WebServer;
-import com.sectorgamer.sharkiller.milkAdmin.listeners.BanlistListener;
-import com.sectorgamer.sharkiller.milkAdmin.listeners.WhitelistListener;
-import com.sectorgamer.sharkiller.milkAdmin.objects.Banlist;
-import com.sectorgamer.sharkiller.milkAdmin.objects.Whitelist;
-import com.sectorgamer.sharkiller.milkAdmin.rtk.RTKInterface;
-import com.sectorgamer.sharkiller.milkAdmin.rtk.RTKInterfaceException;
-import com.sectorgamer.sharkiller.milkAdmin.rtk.RTKListener;
-import com.sectorgamer.sharkiller.milkAdmin.util.FileMgmt;
-import com.sectorgamer.sharkiller.milkAdmin.util.MilkAdminLog;
-import com.sectorgamer.sharkiller.milkAdmin.util.PropertiesFile;
+import com.sectorgamer.sharkiller.milkAdmin.listeners.*;
+import com.sectorgamer.sharkiller.milkAdmin.objects.*;
+import com.sectorgamer.sharkiller.milkAdmin.rtk.*;
+import com.sectorgamer.sharkiller.milkAdmin.util.*;
 
 import net.milkbowl.vault.permission.Permission;
 
@@ -44,7 +38,7 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 	public ArrayList<String> kickedPlayers = new ArrayList<String>();
 	/* RTK variables */
 	boolean UsingRTK;
-	RTKInterface api = null;
+	RTKInterface RTKapi = null;
 	String userRTK, passRTK;
 	int portRTK;
 	/* Server variables */
@@ -134,8 +128,8 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 				userRTK = Settings.getString("RTK.Username", "user");
 				passRTK = Settings.getString("RTK.Password", "pass");
 				portRTK = Settings.getInt("RTK.Port", 25000);
-				api = RTKInterface.createRTKInterface(portRTK,"localhost",userRTK,passRTK);
-				api.registerRTKListener(this);
+				RTKapi = RTKInterface.createRTKInterface(portRTK,"localhost",userRTK,passRTK);
+				RTKapi.registerRTKListener(this);
 			}else{
 				MilkAdminLog.warning("Not using RTK. Required to Start/Stop/Restart/Backup.");
 			}

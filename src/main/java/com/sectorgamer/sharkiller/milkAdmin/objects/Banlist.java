@@ -4,8 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import com.sectorgamer.sharkiller.milkAdmin.MilkAdmin;
-import com.sectorgamer.sharkiller.milkAdmin.util.MilkAdminLog;
-import com.sectorgamer.sharkiller.milkAdmin.util.PropertiesFile;
+import com.sectorgamer.sharkiller.milkAdmin.util.*;
 
 /**
  * Handle milkAdmin Ban list system.
@@ -25,7 +24,7 @@ public class Banlist {
 			banListName.load();
 			banListIp.load();
 		} catch (IOException e) {
-			MilkAdminLog.severe("Could not load banlist files.", e);
+			MilkAdminLog.severe("Could not load banlist files!", e);
 		}
 	}
 	
@@ -53,4 +52,5 @@ public class Banlist {
 
 		return ret;
 	}
+	
 }

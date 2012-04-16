@@ -52,7 +52,7 @@ public final class PropertiesFile {
             FileInputStream stream = null;
         try {
             stream = new FileInputStream(fileName);
-            props.load( stream);
+            props.load(stream);
         }catch(IOException ex) {
         }finally{
             try {
@@ -145,7 +145,7 @@ public final class PropertiesFile {
      * @return <code>Boolean</code> - True for existance, false for <code>key</code> found.
      */
     public boolean keyExists(String key) {
-        return containsKey(key);
+        return this.containsKey(key);
     }
 
     /**

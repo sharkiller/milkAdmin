@@ -18,11 +18,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.*;
 
 import com.sectorgamer.sharkiller.milkAdmin.rtk.*;
-import com.sectorgamer.sharkiller.milkAdmin.util.Configuration;
-import com.sectorgamer.sharkiller.milkAdmin.util.MilkAdminLog;
-import com.sectorgamer.sharkiller.milkAdmin.util.NoSavePropertiesFile;
-import com.sectorgamer.sharkiller.milkAdmin.util.PropertiesFile;
-
+import com.sectorgamer.sharkiller.milkAdmin.util.*;
 
 /**
  * Simple <code>WebServer</code> All-In-One.
@@ -44,13 +40,11 @@ public class WebServer extends Thread implements RTKListener{
 	String levelname;
 	String PluginDir = "plugins/milkAdmin/";
 	String BackupPath = "Backups [milkAdmin]";
-	String ExternalUrl = "http://www.sharkale.com.ar/milkAdmin";
+	String ExternalUrl = "";
 	String BanListDir;
 	Configuration Settings = new Configuration(new File(PluginDir+"settings.yml"));
 	Configuration Worlds = new Configuration(new File(PluginDir+"worlds.yml"));
 	PropertiesFile BukkitProperties = new PropertiesFile("server.properties");
-	PropertiesFile banListName;
-	PropertiesFile banListIp;
 	String bannedplayers = "banned-players.txt";
 	ArrayList<String> bannedPlayers = new ArrayList<String>();
 	String bannedips = "banned-ips.txt";
@@ -395,7 +389,7 @@ public class WebServer extends Thread implements RTKListener{
 		try {
 			debug("Writing listbans.");
 			// names
-			Map<String,String> banNames = banListName.returnMap();
+			Map<String,String> banNames = milkAdminInstance.BL.banListName.returnMap();
 			i = banNames.entrySet().iterator();
 			listban = "[{\"players\":[";
 			while(i.hasNext()) {
@@ -405,7 +399,7 @@ public class WebServer extends Thread implements RTKListener{
 			}
 			listban = listban + "]},";
 			// ips
-			Map<String,String> banIps = banListIp.returnMap();
+			Map<String,String> banIps = milkAdminInstance.BL.banListIp.returnMap();
 			i = banIps.entrySet().iterator();
 			listban = listban + "{\"ips\":[";
 			while(i.hasNext()) {
@@ -539,8 +533,6 @@ public class WebServer extends Thread implements RTKListener{
 		BackupPath = Settings.getString("Backup.Path", "Backups [milkAdmin]");
 		BanListDir = Settings.getString("Settings.BanListDir", "plugins/milkAdmin");
 		ExternalUrl = Settings.getString("Settings.ExternalUrl", "http://www.sharkale.com.ar/milkAdmin");
-		banListName = new PropertiesFile(BanListDir+"/banlistname.ini");
-		banListIp = new PropertiesFile(BanListDir+"/banlistip.ini");
 		Debug = Settings.getBoolean("Settings.Debug", false);
 		String ipaux = Settings.getString("Settings.Ip", null);
 		if(ipaux != null && !ipaux.equals("")){
@@ -749,7 +741,7 @@ public class WebServer extends Thread implements RTKListener{
 									} catch (InterruptedException e) {
 										debug("ERROR in Stop: " + e.getMessage());
 									}
-									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
+									milkAdminInstance.RTKapi.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
 								}
 								else if ( url.equals("/reload_server") ){
 									milkAdminInstance.getServer().reload();
@@ -759,7 +751,7 @@ public class WebServer extends Thread implements RTKListener{
 								}
 								else if ( url.equals("/restart_server") ){
 									try{
-										milkAdminInstance.api.executeCommand(RTKInterface.CommandType.RESTART,null);
+										milkAdminInstance.RTKapi.executeCommand(RTKInterface.CommandType.RESTART,null);
 									}catch(IOException e){
 										debug("ERROR in restart_server: " + e.getMessage());
 									}
@@ -908,7 +900,7 @@ public class WebServer extends Thread implements RTKListener{
 									} catch (InterruptedException e) {
 										debug("ERROR in backup: " + e.getMessage());
 									}
-									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
+									milkAdminInstance.RTKapi.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
 								}
 								else if( url.startsWith("/restore")){
 									String id = getParam("id", param);
@@ -924,7 +916,7 @@ public class WebServer extends Thread implements RTKListener{
 									} catch (InterruptedException e) {
 										debug("ERROR in backup: " + e.getMessage());
 									}
-									milkAdminInstance.api.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
+									milkAdminInstance.RTKapi.executeCommand(RTKInterface.CommandType.HOLD_SERVER,null);
 								}
 								else if( url.startsWith("/delete")){
 									String id = getParam("id", param);
@@ -1145,12 +1137,12 @@ public class WebServer extends Thread implements RTKListener{
 											banstring = cause;
 										Player p = milkAdminInstance.getServer().getPlayer(user);
 										if(p != null && p.isOnline()){
-											banListName.setString(p.getName(), banstring);
+											milkAdminInstance.BL.banListName.setString(p.getName(), banstring);
 											p.kickPlayer(banstring);
+											MilkAdminLog.info(p.getName()+" banned for: "+banstring);
 										}else{
-											banListName.setString(user, banstring);
+											milkAdminInstance.BL.banListName.setString(user, banstring);
 										}
-										banListName.save();
 										json = "ok:playerbanned:_NAME_,"+user;
 									}else{
 										json = "error:badparameters";
@@ -1166,12 +1158,12 @@ public class WebServer extends Thread implements RTKListener{
 											banstring = cause;
 										Player p = milkAdminInstance.getServer().getPlayer(ip);
 										if(p != null && p.isOnline()){
-											banListIp.setString(String.valueOf(p.getAddress()).split("/")[1].split(":")[0], banstring);
+											milkAdminInstance.BL.banListIp.setString(String.valueOf(p.getAddress()).split("/")[1].split(":")[0], banstring);
 											p.kickPlayer(banstring);
+											MilkAdminLog.info(p.getName()+" banned for: "+banstring);
 										}else{
-											banListIp.setString(ip, banstring);
+											milkAdminInstance.BL.banListIp.setString(ip, banstring);
 										}
-										banListIp.save();
 										json = "ok:ipbanned:_IP_,"+ip;
 									}else{
 										json = "error:badparameters";
@@ -1181,9 +1173,8 @@ public class WebServer extends Thread implements RTKListener{
 								else if ( url.startsWith("/player/unban_player") ){
 									String user = getParam("user", param);
 									if(user.length() > 0){
-										if(banListName.keyExists(user)){
-											banListName.removeKey(user);
-											banListName.save();
+										if(milkAdminInstance.BL.banListName.keyExists(user)){
+											milkAdminInstance.BL.banListName.removeKey(user);
 											json = "ok:playerunbanned:_NAME_,"+user;
 										}else{
 											json = "error:playernotbanned";
@@ -1196,9 +1187,8 @@ public class WebServer extends Thread implements RTKListener{
 								else if ( url.startsWith("/player/unban_ip") ){
 									String ip = getParam("user", param);
 									if(ip.length() > 0){
-										if(banListIp.keyExists(ip)){
-											banListIp.removeKey(ip);
-											banListIp.save();
+										if(milkAdminInstance.BL.banListIp.keyExists(ip)){
+											milkAdminInstance.BL.banListIp.removeKey(ip);
 											json = "ok:ipunbanned:_IP_,"+ip;
 										}else{
 											json = "error:ipnotbanned";
