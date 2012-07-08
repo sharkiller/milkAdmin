@@ -603,7 +603,10 @@ public class WebServer extends Thread implements RTKListener{
 							debug(HostAddress+" - "+url);
 							urlDebug = url;
 							debug(" - ContainsKey: "+String.valueOf(LoggedIn.containsKey(HostAddress)) + " - keyExists: "+String.valueOf(LoggedIn.keyExists(HostAddress)));
-							if ( url.startsWith("/ping") ){
+							if ( url.contains("./")  ){
+								httperror("403 Access Denied");
+							}
+							else if ( url.startsWith("/ping") ){
 								if (!LoggedIn.containsKey(HostAddress)){
 									json = "login";
 								}else{
@@ -656,7 +659,7 @@ public class WebServer extends Thread implements RTKListener{
 							}else{
 								if(adminList.containsKey("admin")){
 									if( url.equals("/register.html")){
-										readFileAsBinary(htmlDir+"/register.html", "text/html");
+										readFileAsBinary(htmlDir+"/register.html", "text/html", true);
 									}
 									else if(url.startsWith("/js/lang/")){
 										readFileAsBinary(htmlDir + url, "text/javascript");
@@ -681,7 +684,7 @@ public class WebServer extends Thread implements RTKListener{
 			                        		json = "error:badparameters";
 										print(json, "text/html");
 									}else{
-										readFileAsBinary(htmlDir+"/register.html", "text/html");
+										readFileAsBinary(htmlDir+"/register.html", "text/html", true);
 									}
 								}
 								//FINISHED LOGIN
@@ -776,6 +779,16 @@ public class WebServer extends Thread implements RTKListener{
 									json = json + "]";
 									print(json, "application/json");
 								}
+								else if ( url.startsWith("/server/plugin_latest.json") ){
+									String plugin = getParam("plugin", param);
+									if(plugin.length() > 0){
+		                        		json = milkAdminInstance.PU.getLatest(plugin);
+									}else{
+										json = "[{\"error\":\"badparameters\"}]";
+									}
+									// TODO: Change to "application/json"
+									print(json, "text/plain");
+								}
 								else if ( url.startsWith("/server/disable_plugin") ){
 									String plugin = getParam("plugin", param);
 		                        	if(plugin.length() > 0){
@@ -853,6 +866,7 @@ public class WebServer extends Thread implements RTKListener{
 									print(readConsole(), "text/plain");
 								}
 								else if( url.startsWith("/server/properties_edit")) {
+									// TODO: Change properties automatically in the server.
 									String property = getParam("property", param);
 									String value = getParam("value", param);
 		                        	if(property.length() > 0 && value.length() > 0){
@@ -1100,6 +1114,7 @@ public class WebServer extends Thread implements RTKListener{
 									print(json, "text/plain");
 								}
 								else if ( url.startsWith("/player/set_health") ){
+
 									String user = getParam("user", param);
 									String amount = getParam("amount", param);
 									if(user.length() > 0 && amount.length() > 0){

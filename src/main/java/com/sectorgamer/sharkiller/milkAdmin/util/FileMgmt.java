@@ -82,19 +82,21 @@ public class FileMgmt {
 		}
 	}
 	
-	public static void unziptodir(File zipdir, File dest){
+	public static boolean unziptodir(File zipdir, File dest){
 		ZipFile zip;
 		try {
 			zip = new ZipFile(zipdir);
-			unzipFileIntoDirectory(zip, dest);
+			return unzipFileIntoDirectory(zip, dest);
 		} catch (ZipException e) {
 			MilkAdminLog.warning("Failed to unzip!", e);
+			return false;
 		} catch (IOException e) {
 			MilkAdminLog.warning("Failed to unzip!", e);
+			return false;
 		}
 	}
 	
-	public static void unzipFileIntoDirectory(ZipFile zipFile, File jiniHomeParentDir) {
+	public static boolean unzipFileIntoDirectory(ZipFile zipFile, File jiniHomeParentDir) {
 		Enumeration<?> files = zipFile.entries();
 		File f = null;
 		FileOutputStream fos = null;
@@ -129,11 +131,11 @@ public class FileMgmt {
 					try {
 						fos.close();
 					} catch (IOException e) {
-						// ignore
 					}
-				}
+				}	
 			}
 		}
+		return true;
 	}
 	
 	public static void copy(InputStream in, File file) {

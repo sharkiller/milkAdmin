@@ -36,6 +36,8 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 	public String WLAlertMessage;
 	public String WLKickMessage;
 	public ArrayList<String> kickedPlayers = new ArrayList<String>();
+	/* PluginUpdates variables */
+	public PluginUpdates PU;
 	/* RTK variables */
 	boolean UsingRTK;
 	RTKInterface RTKapi = null;
@@ -65,9 +67,12 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 				dir = new File(PluginDir + File.separator + "milkAdmin.zip");
 				FileMgmt.copy(getResource("milkAdmin.zip"), dir);
 				MilkAdminLog.info("Done! Unzipping...");
-				FileMgmt.unziptodir(dir, new File(PluginDir));
-				MilkAdminLog.info("Done! Deleting zip.");
-				dir.delete();
+				if(FileMgmt.unziptodir(dir, new File(PluginDir))){
+					MilkAdminLog.info("Done! Deleting zip.");
+					dir.deleteOnExit();
+				} else
+					MilkAdminLog.info("Unzip failed!");
+				
 			}
 			
 			/* Check and Copy default config files */
@@ -190,6 +195,8 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 			PluginDescriptionFile pdfFile = this.getDescription();
 			MilkAdminLog.info("v"+pdfFile.getVersion()+" is enabled!" );
 			MilkAdminLog.info("Developed by: "+pdfFile.getAuthors());
+			/* Init PluginUpdates */
+			PU = new PluginUpdates(pm);
 			/* Init web server class */
 			server = new WebServer(this);
 		}else{

@@ -1,6 +1,5 @@
 package com.sectorgamer.sharkiller.milkAdmin.listeners;
 
-
 import org.bukkit.event.Listener;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -8,7 +7,6 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerLoginEvent.Result;
 
 import com.sectorgamer.sharkiller.milkAdmin.MilkAdmin;
-
 
 /**
  * Handle events for White list System.
