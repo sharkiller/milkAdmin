@@ -1,7 +1,7 @@
 name: milkAdmin
 main: com.sectorgamer.sharkiller.milkAdmin.MilkAdmin
 author: Sharkiller
-version: 1.9
+version: 1.9-07.08
 website: http://www.sectorgamer.com/comunidad/
 description: WebAdministrator of Minecraft Servers for Bukkit.
 
