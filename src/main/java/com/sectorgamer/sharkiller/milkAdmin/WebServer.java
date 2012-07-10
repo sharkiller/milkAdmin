@@ -866,12 +866,11 @@ public class WebServer extends Thread implements RTKListener{
 									print(readConsole(), "text/plain");
 								}
 								else if( url.startsWith("/server/properties_edit")) {
-									// TODO: Change properties automatically in the server.
 									String property = getParam("property", param);
 									String value = getParam("value", param);
 		                        	if(property.length() > 0 && value.length() > 0){
-										BukkitProperties.setString(property, value);
-										json = "ok:editedproperty";
+		                        		BukkitProperties.setString(property, value);
+		                        		json = "ok:editedproperty";
 									}else{
 										json = "error:badparameters";
 									}

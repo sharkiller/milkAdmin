@@ -3,6 +3,7 @@ package com.sectorgamer.sharkiller.milkAdmin.objects;
 import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import org.w3c.dom.*;
 import javax.xml.parsers.*;
@@ -38,10 +39,15 @@ public class PluginUpdates {
 	public String RSS2JSON(NodeList rss){
 		Element element = (Element)rss.item(0);
 		
-		SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");
-		String date;
+		SimpleDateFormat format = new SimpleDateFormat("dd MMM yyyy");//Sun, 08 Jul 2012 10:11:31 +0000
+		SimpleDateFormat format2 = new SimpleDateFormat("dd/MM/yyyy");
+		Date dateparse;
+		String date="";
 		try {
-			date = format.parse(getElementValue(element,"pubDate")).toString();
+			format.setLenient(true);
+			date = getElementValue(element,"pubDate").substring(5,16);
+			dateparse = format.parse(date);
+			date = format2.format(dateparse);
 		} catch (ParseException e) {
 			date = "????";
 		}
@@ -49,7 +55,7 @@ public class PluginUpdates {
 		String json = "[";
 		json = json + "{\"title\":\""+getElementValue(element,"title")+"\"," +
 					  "\"link\":\""+getElementValue(element,"link")+"\"," +
-					  "\"pubDate\":"+date+"}";
+					  "\"pubDate\":\""+date+"\"}";
 		json = json + "]";
 		
 		return json;
