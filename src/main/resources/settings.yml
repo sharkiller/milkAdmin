@@ -47,6 +47,9 @@ Whitelist:
     # Use the milkAdmin custom whitelist.
     # Please check that minecraft whitelist is deactivated.
     Custom: false
+    # Use the milkAdmin custom whitelist.
+    # Please check that minecraft whitelist is deactivated.
+    WhitelistDir: 'plugins/milkAdmin'
     # Alert ingame when a player is trying to join and is not in whitelist.
     Alert: true
     # Alert message. %s will be replaced by the player's name.

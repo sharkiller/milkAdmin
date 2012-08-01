@@ -31,6 +31,7 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 	public String BLMessage;
 	/* White list variables */
 	public Whitelist WL;
+	public String WLDir;
 	public boolean WLCustom = false;
 	public boolean WLAlert = false;
 	public String WLAlertMessage;
@@ -97,6 +98,7 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 			
 			/* Get configs */
 			BLDir = Settings.getString("Settings.BanListDir", "plugins" + File.separator + "milkAdmin");
+			WLDir = Settings.getString("Whitelist.WhitelistDir", "plugins" + File.separator + "milkAdmin");
 			BLMessage = Settings.getString("Strings.Banned", "Banned from the server!");
 			UsingRTK = Settings.getBoolean("RTK.UsingRTK", false);
 			WLCustom = Settings.getBoolean("Whitelist.Custom", false);
@@ -115,7 +117,7 @@ public class MilkAdmin extends JavaPlugin implements RTKListener{
 				MilkAdminLog.warning("Minecraft Whitelist is actitivated. Shutting down custom Whitelist.");
 				WLCustom = false;
 			}else if(WLCustom){
-				WL = new Whitelist();
+				WL = new Whitelist(this);
 				WLAlert = Settings.getBoolean("Whitelist.Alert", true);
 				WLAlertMessage = Settings.getString("Whitelist.AlertMessage", "&6%s trying to join but is not in whitelist.");
 				WLKickMessage = Settings.getString("Whitelist.KickMessage", "You are not in whitelist. Register on the forum!");

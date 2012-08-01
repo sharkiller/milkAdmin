@@ -11,6 +11,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import com.sectorgamer.sharkiller.milkAdmin.MilkAdmin;
 import com.sectorgamer.sharkiller.milkAdmin.util.Configuration;
 import com.sectorgamer.sharkiller.milkAdmin.util.MilkAdminLog;
 
@@ -41,11 +42,13 @@ public class Whitelist {
      * likes: 50
 	 *
 	 **/
-	static final String PluginDir = "plugins" + File.separator + "milkAdmin";
+	private MilkAdmin plugin;
 	private Configuration whitelist;
-	private File file = new File(PluginDir + File.separator + "whitelist.yml");
+	private File file;
 	
-	public Whitelist(){
+	public Whitelist(MilkAdmin i){
+		this.plugin = i;
+		file = new File(plugin.WLDir + File.separator + "whitelist.yml");
 		whitelist = new Configuration(file);
 		
 		if (file.exists()) {
