@@ -178,6 +178,7 @@ public class WebServer extends Thread implements RTKListener{
 			while( ( line = randomFile.readLine() ) != null ){
 				console = console + (line + "\n");
 			}
+			randomFile.close();
 		}
 		catch (Exception e) {
 			debug("ERROR in readConsole(): " + e.getMessage());
@@ -199,6 +200,7 @@ public class WebServer extends Thread implements RTKListener{
 			while( ( lastline = randomFile.readLine() ) != null ){
 				console = lastline;
 			}
+			randomFile.close();
 		}
 		catch (Exception e) {
 			debug("ERROR in lastConsoleLine(): " + e.getMessage());
